@@ -259,9 +259,29 @@ impl SaveManager {
         Ok(())
     }
 
-    /// Get file path for a save slot
+    /// Get file path for a save slot (with security validation)
     fn get_save_file_path(&self, slot_name: &str) -> PathBuf {
-        self.save_directory.join(format!("{}.save", slot_name))
+        // Sanitize slot name to prevent path traversal attacks
+        let sanitized_name = self.sanitize_slot_name(slot_name);
+        self.save_directory.join(format!("{}.save", sanitized_name))
+    }
+
+    /// Sanitize slot name to prevent path traversal and other security issues
+    fn sanitize_slot_name(&self, slot_name: &str) -> String {
+        // Remove any path separators, parent directory references, and other dangerous characters
+        let sanitized = slot_name
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-')
+            .collect::<String>();
+
+        // Ensure the name is not empty and has reasonable length
+        if sanitized.is_empty() {
+            "default".to_string()
+        } else if sanitized.len() > 50 {
+            sanitized[..50].to_string()
+        } else {
+            sanitized
+        }
     }
 
     /// Quick save to default slot
@@ -412,5 +432,55 @@ mod tests {
         // Should be able to load quicksave
         let load_result = manager.load_game("quicksave");
         assert!(load_result.is_ok());
+    }
+
+    #[test]
+    fn test_path_traversal_protection() {
+        let (manager, temp_dir) = create_test_save_manager();
+        let player = Player::new("Security Test".to_string());
+        let world = WorldState::new();
+
+        // Test various path traversal attempts
+        let malicious_names = vec![
+            "../../../etc/passwd",
+            "..\\..\\windows\\system32\\config",
+            "/tmp/evil",
+            "C:\\Windows\\System32\\evil.save",
+            "normal/../../../evil",
+            "../../evil",
+            "../evil",
+            ".\\..\\evil",
+            "evil/../../bypass",
+        ];
+
+        for malicious_name in malicious_names {
+            // Should sanitize the name and save safely within the saves directory
+            let result = manager.save_game(&player, &world, Some(malicious_name.to_string()), None);
+            assert!(result.is_ok(), "Failed to handle malicious name: {}", malicious_name);
+
+            // Verify the file was created within the saves directory, not outside
+            let save_path = manager.get_save_file_path(malicious_name);
+            assert!(save_path.starts_with(&temp_dir.path()),
+                "Malicious path escaped saves directory: {:?}", save_path);
+        }
+    }
+
+    #[test]
+    fn test_slot_name_sanitization() {
+        let (manager, _temp_dir) = create_test_save_manager();
+
+        // Test various edge cases
+        assert_eq!(manager.sanitize_slot_name("normal_name"), "normal_name");
+        assert_eq!(manager.sanitize_slot_name("with-dashes"), "with-dashes");
+        assert_eq!(manager.sanitize_slot_name("with123numbers"), "with123numbers");
+        assert_eq!(manager.sanitize_slot_name("../../../evil"), "evil");
+        assert_eq!(manager.sanitize_slot_name("/tmp/evil"), "tmpevil");
+        assert_eq!(manager.sanitize_slot_name(""), "default");
+        assert_eq!(manager.sanitize_slot_name("special!@#$%chars"), "specialchars");
+
+        // Test length limiting
+        let long_name = "a".repeat(100);
+        let sanitized = manager.sanitize_slot_name(&long_name);
+        assert_eq!(sanitized.len(), 50);
     }
 }
