@@ -1,0 +1,455 @@
+{
+  "economic_framework": {
+    "description": "Complete economic system for crystal trade, including pricing, availability, faction control, and black market operations",
+    "currency_system": {
+      "primary_currency": "Port Harmony Credits",
+      "denominations": [1, 5, 10, 25, 50, 100, 500],
+      "exchange_rates": {
+        "faction_favors": "1 significant favor = 50-200 credits depending on recipient",
+        "barter_goods": "Traditional goods valued at 50-150% of credit equivalent",
+        "information": "Valuable intelligence = 25-500 credits based on importance",
+        "services": "Magical services = 100-1000 credits based on complexity"
+      },
+      "starting_player_funds": "200 credits (modest but sufficient for basic needs)"
+    },
+    "crystal_market_structure": {
+      "market_tiers": {
+        "premium_consortium": {
+          "description": "Highest quality crystals sold through official Industrial Consortium channels",
+          "quality_range": "80-99% purity",
+          "price_multiplier": "3x-5x base cost",
+          "availability": "Consistent but limited quantities",
+          "access_requirements": "Consortium membership or very high reputation",
+          "guarantees": ["Quality certification", "Replacement warranty", "Technical support"]
+        },
+        "standard_commercial": {
+          "description": "Mid-grade crystals available through licensed dealers",
+          "quality_range": "60-85% purity",
+          "price_multiplier": "1.5x-2.5x base cost",
+          "availability": "Widely available with occasional shortages",
+          "access_requirements": "Basic magical practitioner license",
+          "guarantees": ["Basic quality assurance", "Limited warranty"]
+        },
+        "artisan_crafted": {
+          "description": "Traditional crystals enhanced through Order of Natural Harmony techniques",
+          "quality_range": "70-90% purity",
+          "price_multiplier": "2x-3x base cost",
+          "availability": "Limited production based on community needs",
+          "access_requirements": "Order membership or community standing",
+          "special_properties": ["Environmentally sustainable", "Enhanced healing applications", "Slower degradation"]
+        },
+        "black_market": {
+          "description": "Unregulated crystals of variable quality and questionable origin",
+          "quality_range": "30-95% purity (unmarked and unpredictable)",
+          "price_multiplier": "0.7x-2x base cost (highly variable)",
+          "availability": "Depends on smuggling success and enforcement crackdowns",
+          "access_requirements": "Underground Network contacts or criminal connections",
+          "risks": ["No quality guarantee", "Legal consequences", "Possible stolen goods"]
+        },
+        "grey_market": {
+          "description": "Technically legal but ethically questionable sources",
+          "quality_range": "50-80% purity",
+          "price_multiplier": "1x-2x base cost",
+          "availability": "Moderate but inconsistent",
+          "access_requirements": "Willingness to ignore ethical concerns",
+          "examples": ["Crystals from dangerous working conditions", "Environmentally destructive harvesting", "Exploitative labor practices"]
+        }
+      }
+    },
+    "crystal_types_and_pricing": {
+      "base_pricing_calculation": "Size × Purity × Rarity × Market_Conditions = Base_Price",
+      "crystal_varieties": [
+        {
+          "type": "Clear Quartz",
+          "base_price": 10,
+          "size_modifiers": {"tiny": 0.5, "small": 1, "medium": 3, "large": 8},
+          "purity_impact": "Price increases exponentially with purity above 70%",
+          "resonance_frequency": 5,
+          "common_applications": ["General purpose magic", "Energy storage", "Communication"],
+          "availability": "Very common",
+          "market_notes": "Most stable pricing, used as baseline for other crystal values"
+        },
+        {
+          "type": "Amethyst",
+          "base_price": 25,
+          "size_modifiers": {"tiny": 0.8, "small": 1.5, "medium": 4, "large": 12},
+          "purity_impact": "Premium for healing applications drives high-purity demand",
+          "resonance_frequency": 3,
+          "common_applications": ["Healing magic", "Mental enhancement", "Protective wards"],
+          "availability": "Common",
+          "market_notes": "Steady demand from Order of Natural Harmony drives consistent pricing"
+        },
+        {
+          "type": "Rose Quartz",
+          "base_price": 20,
+          "size_modifiers": {"tiny": 0.6, "small": 1.2, "medium": 3.5, "large": 10},
+          "purity_impact": "Emotional applications less purity-dependent than other uses",
+          "resonance_frequency": 2,
+          "common_applications": ["Empathic magic", "Emotional healing", "Relationship enhancement"],
+          "availability": "Common",
+          "market_notes": "Niche market keeps prices stable but limits growth"
+        },
+        {
+          "type": "Citrine",
+          "base_price": 35,
+          "size_modifiers": {"tiny": 1, "small": 2, "medium": 5, "large": 15},
+          "purity_impact": "Energy amplification requires high purity for industrial use",
+          "resonance_frequency": 7,
+          "common_applications": ["Energy amplification", "Industrial magic", "Power storage"],
+          "availability": "Moderately common",
+          "market_notes": "Industrial Consortium demand creates price volatility"
+        },
+        {
+          "type": "Smoky Quartz",
+          "base_price": 30,
+          "size_modifiers": {"tiny": 0.9, "small": 1.8, "medium": 4.5, "large": 13},
+          "purity_impact": "Grounding applications work well with moderate purity",
+          "resonance_frequency": 4,
+          "common_applications": ["Magical grounding", "Protection", "Dispelling magic"],
+          "availability": "Moderately common",
+          "market_notes": "Defensive applications create steady demand from security-conscious buyers"
+        },
+        {
+          "type": "Obsidian",
+          "base_price": 50,
+          "size_modifiers": {"tiny": 1.2, "small": 2.5, "medium": 6, "large": 18},
+          "purity_impact": "Cutting applications require structural integrity over chemical purity",
+          "resonance_frequency": 8,
+          "common_applications": ["Precision magic", "Cutting/shaping", "Disruption magic"],
+          "availability": "Uncommon",
+          "market_notes": "Specialized applications create price premiums for quality specimens"
+        },
+        {
+          "type": "Moonstone",
+          "base_price": 75,
+          "size_modifiers": {"tiny": 1.5, "small": 3, "medium": 8, "large": 25},
+          "purity_impact": "Intuitive applications highly sensitive to internal flaws",
+          "resonance_frequency": 1,
+          "common_applications": ["Divination", "Intuitive enhancement", "Night magic"],
+          "availability": "Rare",
+          "market_notes": "Mystical applications and rarity create luxury market pricing"
+        },
+        {
+          "type": "Sunstone",
+          "base_price": 100,
+          "size_modifiers": {"tiny": 2, "small": 4, "medium": 10, "large": 30},
+          "purity_impact": "Light applications require perfect internal structure",
+          "resonance_frequency": 9,
+          "common_applications": ["Light magic", "Solar energy", "Purification"],
+          "availability": "Rare",
+          "market_notes": "Rarity and specialized applications create very high prices"
+        },
+        {
+          "type": "Black Tourmaline",
+          "base_price": 125,
+          "size_modifiers": {"tiny": 2.5, "small": 5, "medium": 12, "large": 35},
+          "purity_impact": "Protection applications benefit from natural inclusions",
+          "resonance_frequency": 6,
+          "common_applications": ["Magical protection", "Psychic shielding", "Grounding"],
+          "availability": "Very rare",
+          "market_notes": "High demand for protection creates premium pricing despite difficulty of use"
+        },
+        {
+          "type": "Labradorite",
+          "base_price": 200,
+          "size_modifiers": {"tiny": 3, "small": 6, "medium": 15, "large": 45},
+          "purity_impact": "Transformation magic requires perfect crystal structure",
+          "resonance_frequency": 10,
+          "common_applications": ["Transformation magic", "Illusion", "Reality manipulation"],
+          "availability": "Extremely rare",
+          "market_notes": "Legendary applications and extreme rarity create astronomical prices for quality specimens"
+        }
+      ]
+    },
+    "market_dynamics": {
+      "supply_factors": {
+        "crystal_wastes_harvesting": {
+          "impact": "Primary source of natural crystals",
+          "variability": "Dangerous conditions create supply instability",
+          "quality": "High-quality natural crystals from deep waste expeditions",
+          "seasonal_effects": "Weather patterns affect expedition success rates"
+        },
+        "consortium_production": {
+          "impact": "Consistent supply of processed and enhanced crystals",
+          "control": "Market manipulation through production quotas",
+          "innovation": "New enhancement techniques affect supply quality",
+          "political_influence": "Production decisions influenced by faction politics"
+        },
+        "traditional_sources": {
+          "impact": "Small-scale artisan production",
+          "sustainability": "Environmentally responsible but limited volume",
+          "community_focus": "Prioritizes community needs over market profit",
+          "specialty_products": "Unique applications not available elsewhere"
+        },
+        "smuggling_operations": {
+          "impact": "Uncontrolled supply from illegal sources",
+          "volatility": "Enforcement actions create dramatic supply fluctuations",
+          "quality_risk": "No quality control or authenticity guarantee",
+          "price_pressure": "Undercuts legitimate market pricing"
+        }
+      },
+      "demand_factors": {
+        "industrial_applications": {
+          "volume": "Largest single source of crystal demand",
+          "consistency": "Steady demand for standard quality crystals",
+          "growth": "Expanding magical technology increases demand",
+          "price_sensitivity": "Industrial users seek cost-effective solutions"
+        },
+        "individual_practitioners": {
+          "diversity": "Wide range of crystal types and qualities needed",
+          "price_sensitivity": "Limited budgets create demand for affordable options",
+          "quality_importance": "Personal use prioritizes reliability over cost",
+          "seasonal_patterns": "Training seasons and examination periods create demand spikes"
+        },
+        "institutional_buyers": {
+          "volume": "Moderate but consistent institutional demand",
+          "quality_requirements": "Standardized specifications for official use",
+          "procurement_process": "Formal bidding and contract procedures",
+          "political_factors": "Purchasing decisions influenced by faction relationships"
+        },
+        "collectors_and_researchers": {
+          "specialization": "Demand for rare and unique specimens",
+          "price_insensitivity": "Willing to pay premium for specific properties",
+          "market_impact": "Small volume but high-value transactions",
+          "innovation_driver": "Push for new discovery and development"
+        }
+      },
+      "price_modifiers": {
+        "seasonal_variations": {
+          "spring": "Expedition season begins, new supply enters market (-5% to -15% prices)",
+          "summer": "Peak expedition activity, maximum supply (-10% to -20% prices)",
+          "autumn": "Expedition season ends, supply stabilizes (baseline prices)",
+          "winter": "Limited new supply, existing stocks depleted (+10% to +25% prices)"
+        },
+        "political_events": {
+          "faction_conflicts": "Increased demand for protective crystals (+20% to +50% protection-focused crystals)",
+          "regulatory_changes": "Licensing requirements affect market access (±10% to ±30% depending on changes)",
+          "trade_disputes": "International tensions affect imported crystal availability (±15% to ±40% rare types)",
+          "technological_breakthroughs": "New applications create demand spikes (+25% to +100% for relevant types)"
+        },
+        "magical_incidents": {
+          "cascade_events": "Increased safety concerns drive protective crystal demand (+30% to +75% defensive crystals)",
+          "discovery_events": "New phenomena create research demand (+40% to +200% for investigation-suitable crystals)",
+          "accident_investigations": "Regulatory scrutiny affects market confidence (±20% to ±50% overall market)"
+        }
+      }
+    },
+    "faction_economic_strategies": {
+      "industrial_consortium": {
+        "market_position": "Dominant supplier with premium pricing power",
+        "business_model": "Vertical integration from mining to retail",
+        "competitive_advantages": ["Quality control", "Technical support", "Financial resources"],
+        "pricing_strategy": "Premium pricing with volume discounts for large buyers",
+        "market_manipulation": {
+          "supply_control": "Limit production to maintain high prices",
+          "exclusive_contracts": "Lock in major buyers with long-term agreements",
+          "technology_licensing": "Control access to enhancement techniques",
+          "political_influence": "Lobby for regulations that favor large operators"
+        },
+        "vulnerabilities": ["High overhead costs", "Regulatory scrutiny", "Public relations concerns", "Dependence on dangerous harvesting"],
+        "response_to_competition": "Use superior resources to undercut competitors temporarily, then raise prices"
+      },
+      "underground_network": {
+        "market_position": "Low-cost alternative with variable quality",
+        "business_model": "Decentralized network avoiding regulation and taxation",
+        "competitive_advantages": ["Low overhead", "Risk tolerance", "Customer loyalty", "Information networks"],
+        "pricing_strategy": "Undercut official prices by 20-50% depending on risk level",
+        "market_operations": {
+          "supply_sources": "Illegal mining, theft, smuggling, individual prospectors",
+          "distribution": "Hidden networks, coded transactions, trusted intermediaries",
+          "quality_assurance": "Reputation-based system with no formal guarantees",
+          "customer_base": "Price-sensitive buyers, those excluded from legal channels"
+        },
+        "vulnerabilities": ["Legal prosecution", "Quality control issues", "Supply chain disruption", "Internal security breaches"],
+        "response_to_enforcement": "Increase prices to cover additional risks, develop new distribution methods"
+      },
+      "order_natural_harmony": {
+        "market_position": "Niche supplier focused on ethical and sustainable practices",
+        "business_model": "Community-based production with values-driven pricing",
+        "competitive_advantages": ["Environmental sustainability", "Ethical reputation", "Community support", "Unique enhancements"],
+        "pricing_strategy": "Fair trade pricing that covers true costs including environmental protection",
+        "market_approach": {
+          "production_philosophy": "Sustainable harvesting with environmental restoration",
+          "quality_focus": "Crystals optimized for healing and community applications",
+          "customer_relationship": "Long-term relationships over short-term profit",
+          "market_size": "Deliberately limited to sustainable levels"
+        },
+        "vulnerabilities": ["Limited production capacity", "Higher labor costs", "Ideological constraints", "Competition from cheaper alternatives"],
+        "response_to_pressure": "Emphasize value proposition of ethical sourcing and community benefits"
+      },
+      "magisters_council": {
+        "market_role": "Regulator rather than direct participant",
+        "economic_impact": "Controls market access through licensing and enforcement",
+        "revenue_sources": ["Licensing fees", "Taxation", "Fines and penalties", "Auction of confiscated goods"],
+        "regulatory_tools": {
+          "licensing_requirements": "Control who can buy and sell crystals",
+          "quality_standards": "Mandate minimum standards affecting costs",
+          "taxation": "Generate revenue while influencing market behavior",
+          "enforcement_actions": "Disrupt illegal operations through raids and arrests"
+        },
+        "market_influence": {
+          "barrier_creation": "Licensing creates barriers to entry favoring established players",
+          "price_stability": "Regulation reduces extreme price volatility",
+          "quality_assurance": "Standards provide consumer protection",
+          "market_transparency": "Reporting requirements increase information availability"
+        },
+        "economic_challenges": ["Enforcement costs", "Political pressure from factions", "Black market adaptation", "International coordination"]
+      },
+      "neutral_scholars": {
+        "market_position": "Information providers and quality assessors",
+        "business_model": "Research services and objective analysis",
+        "revenue_sources": ["Research contracts", "Quality assessment fees", "Educational services", "Consulting"],
+        "market_services": {
+          "quality_analysis": "Independent crystal testing and certification",
+          "market_research": "Objective analysis of trends and pricing",
+          "technical_consultation": "Expert advice on crystal applications",
+          "education": "Training programs for practitioners and dealers"
+        },
+        "value_proposition": {
+          "independence": "Unbiased analysis not influenced by commercial interests",
+          "expertise": "Deep technical knowledge and research capabilities",
+          "credibility": "Trusted by all factions for objective information",
+          "innovation": "Develop new applications and understanding"
+        },
+        "economic_impact": "Increase market efficiency through better information and reduced information asymmetries"
+      }
+    },
+    "trade_routes_and_logistics": {
+      "local_distribution": {
+        "central_market": {
+          "role": "Primary retail hub for individual consumers",
+          "advantages": ["High foot traffic", "Competitive environment", "Established infrastructure"],
+          "challenges": ["High rent costs", "Regulatory oversight", "Competition pressure"],
+          "customer_base": "Individual practitioners, small businesses, tourists"
+        },
+        "industrial_district": {
+          "role": "Wholesale and industrial sales",
+          "advantages": ["Direct access to major buyers", "Bulk handling facilities", "Transportation connections"],
+          "challenges": ["Limited consumer access", "Industrial-scale security requirements"],
+          "customer_base": "Manufacturing, large institutions, research facilities"
+        },
+        "harbor_district": {
+          "role": "Import/export and international trade",
+          "advantages": ["International connections", "Bulk transportation", "Diverse customer base"],
+          "challenges": ["Customs regulation", "International law compliance", "Currency exchange"],
+          "customer_base": "International traders, shipping companies, smugglers"
+        }
+      },
+      "supply_chain_routes": {
+        "crystal_wastes_expeditions": {
+          "frequency": "Weekly to monthly depending on season and safety conditions",
+          "transportation": "Specialized expedition vehicles with magical protection",
+          "costs": "High due to danger pay, equipment, and loss rates",
+          "yield": "Variable based on expedition success and market conditions",
+          "participants": ["Consortium mining teams", "Independent prospectors", "Underground smugglers"]
+        },
+        "international_imports": {
+          "sources": ["Allied nations with different crystal types", "Distant regions with rare specimens"],
+          "transportation": "Maritime shipping with magical preservation",
+          "costs": "Moderate but affected by international politics and trade agreements",
+          "regulation": "Heavy customs oversight and import restrictions",
+          "specialty": "Crystals not available locally or of superior quality"
+        },
+        "artisan_production": {
+          "sources": "Local communities with traditional enhancement techniques",
+          "transportation": "Local distribution through community networks",
+          "costs": "Higher due to labor-intensive production methods",
+          "volume": "Limited by community capacity and values",
+          "specialty": "Ethically-sourced crystals with unique enhancements"
+        }
+      },
+      "transportation_infrastructure": {
+        "road_networks": {
+          "coverage": "Well-developed within city and immediate region",
+          "maintenance": "Crystal-powered systems for efficiency",
+          "security": "Patrol systems protect valuable cargo",
+          "limitations": "Weather and magical interference can disrupt transport"
+        },
+        "magical_transport": {
+          "applications": "High-value, time-sensitive shipments",
+          "costs": "Very expensive but extremely fast",
+          "limitations": "Limited capacity and range",
+          "providers": "Specialized magical transport companies"
+        },
+        "security_systems": {
+          "cargo_protection": "Magical wards and physical security for valuable shipments",
+          "authentication": "Crystal-based authentication systems to prevent theft and fraud",
+          "tracking": "Magical tracking for real-time shipment monitoring",
+          "insurance": "Specialized insurance for magical cargo risks"
+        }
+      }
+    },
+    "economic_consequences_of_player_actions": {
+      "market_manipulation": {
+        "bulk_purchasing": "Large purchases can create shortages and price increases",
+        "strategic_selling": "Timing sales can influence market prices",
+        "information_trading": "Market intelligence has economic value",
+        "faction_relationships": "Political actions affect access to different market tiers"
+      },
+      "supply_disruption": {
+        "expedition_interference": "Actions in Crystal Wastes affect supply levels",
+        "faction_conflicts": "Political actions can disrupt trade relationships",
+        "regulatory_changes": "Player influence on regulations affects market access",
+        "technological_developments": "Contributing to research can change demand patterns"
+      },
+      "reputation_economics": {
+        "faction_standing": "Better relationships unlock better prices and access",
+        "professional_reputation": "Known expertise creates consulting opportunities",
+        "trustworthiness": "Reliable behavior unlocks credit and exclusive deals",
+        "notoriety": "Criminal reputation may increase black market access but reduce legal options"
+      },
+      "innovation_impact": {
+        "new_applications": "Discovering new uses for crystals increases demand",
+        "efficiency_improvements": "Better techniques affect production costs",
+        "safety_developments": "Improved safety reduces expedition costs",
+        "quality_enhancements": "New enhancement methods change competitive dynamics"
+      }
+    },
+    "player_economic_opportunities": {
+      "trading_strategies": {
+        "arbitrage": "Buy low in one market tier and sell high in another",
+        "speculation": "Purchase crystals before anticipated demand increases",
+        "corner_markets": "Control supply of specific crystal types for profit",
+        "information_broker": "Trade market intelligence for profit or favors"
+      },
+      "business_ventures": {
+        "independent_prospecting": "Organize expeditions to Crystal Wastes for direct sourcing",
+        "enhancement_services": "Offer crystal improvement services to other practitioners",
+        "quality_assessment": "Provide independent crystal evaluation services",
+        "transportation": "Organize secure transport for other traders"
+      },
+      "employment_opportunities": {
+        "consortium_researcher": "Salary plus access to advanced crystals and techniques",
+        "council_inspector": "Government salary plus authority and legal protection",
+        "underground_smuggler": "High risk but potentially very high reward",
+        "scholar_consultant": "Project-based income with intellectual freedom"
+      },
+      "investment_options": {
+        "crystal_speculation": "Purchase crystals for long-term appreciation",
+        "expedition_backing": "Finance expeditions for share of profits",
+        "technology_development": "Invest in research for licensing opportunities",
+        "infrastructure": "Develop transportation or storage facilities"
+      }
+    },
+    "economic_indicators": {
+      "market_health_metrics": {
+        "price_volatility": "Standard deviation of prices over time periods",
+        "supply_diversity": "Number of active suppliers and sources",
+        "transaction_volume": "Total crystal sales volume and value",
+        "market_concentration": "Degree of dominance by major players"
+      },
+      "economic_warning_signs": {
+        "extreme_price_spikes": "Sudden increases may indicate supply disruption or market manipulation",
+        "quality_degradation": "Declining average quality suggests supply chain problems",
+        "black_market_growth": "Increasing illegal activity indicates regulatory or pricing issues",
+        "innovation_stagnation": "Lack of new developments suggests economic or political problems"
+      },
+      "growth_opportunities": {
+        "emerging_applications": "New uses for crystals create demand growth",
+        "international_expansion": "Access to new markets and supply sources",
+        "technology_advancement": "Improved techniques reduce costs or improve quality",
+        "regulatory_reform": "Better regulations can increase market efficiency"
+      }
+    }
+  }
+}

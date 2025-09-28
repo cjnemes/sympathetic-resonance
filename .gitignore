@@ -1,0 +1,55 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# Debug builds
+debug/
+target/
+/release
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Game-specific files
+assets/save_games/*.save
+assets/save_games/*.backup
+content/database.db-wal
+content/database.db-shm
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Environment variables
+.env
+.env.local
+
+# Test coverage
+coverage/
+tarpaulin-report.html
+
+# Benchmark results
+benchmark_results/
+
+# Performance profiling
+perf.data*
+callgrind.out.*
