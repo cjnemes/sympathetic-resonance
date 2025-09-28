@@ -117,8 +117,8 @@ mod tests {
         std::mem::forget(temp_file);
         println!("Database operations: {:.2}ms", duration.as_secs_f64() * 1000.0);
 
-        // Database initialization with full content (8 locations + 12 NPCs) has higher threshold
-        let database_init_target = Duration::from_millis(150);
+        // Database initialization with full content (8 locations + 12 NPCs + quest system) has higher threshold
+        let database_init_target = Duration::from_millis(200);
         assert!(duration <= database_init_target,
                 "Database operations took {:.2}ms, exceeds target of {:.2}ms",
                 duration.as_secs_f64() * 1000.0, database_init_target.as_secs_f64() * 1000.0);

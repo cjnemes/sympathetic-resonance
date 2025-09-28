@@ -13,6 +13,7 @@ Experience a world where magic operates according to scientific principles, wher
 - **Dynamic Faction System**: Five major factions with interconnected politics and reputation consequences
 - **Rich Resource Management**: Balance mental energy, crystal degradation, and political relationships
 - **Meaningful Choices**: Decisions have lasting consequences across multiple game systems
+- **Quest System**: Structured educational progression with faction-aware storylines
 - **Environmental Storytelling**: Discover lore through magical resonance signatures and world details
 
 ## Quick Start
@@ -48,7 +49,7 @@ cargo run
 sympathetic-resonance/
 ├── src/
 │   ├── core/          # Core game engine (world state, player, events)
-│   ├── systems/       # Game systems (magic, factions, knowledge, combat)
+│   ├── systems/       # Game systems (magic, factions, knowledge, quests, combat)
 │   ├── input/         # Command parsing and natural language processing
 │   ├── content/       # Content loading and narrative engine
 │   ├── persistence/   # Save/load system and database operations
@@ -95,6 +96,46 @@ Five major factions shape the political landscape:
 - **Neutral Scholars**: Independent research and cross-faction cooperation
 
 Actions affect reputation with multiple factions simultaneously, creating complex political considerations for every choice.
+
+## Quest System
+
+The quest system provides structured educational progression through the game's magic theory learning framework. Quests guide players through scientific discovery while respecting player autonomy and exploration preferences.
+
+### Quest Types
+
+- **Theory Foundation Quests**: Introduction to magical principles and scientific methodology
+- **Practical Application Quests**: Hands-on spellcasting with theoretical reinforcement
+- **Faction Political Quests**: Navigate complex relationships and diplomatic challenges
+- **Advanced Research Quests**: Multi-theory synthesis and advanced magical techniques
+- **Collaborative Quests**: Cross-faction cooperation and mentorship opportunities
+
+### Educational Framework
+
+- **Competency-Based Progression**: Demonstrate understanding, not just completion
+- **Multiple Learning Pathways**: Study, experimentation, observation, teaching, research, mentorship
+- **Scientific Thinking**: Hypothesis formation, testing, and iterative improvement
+- **Systems Integration**: Understand connections between magic, politics, and society
+
+### Example Quest Progression
+
+```
+> quest status
+Active Quests:
+- "Resonance Foundation": Learn basic theory of sympathetic resonance (2/3 objectives)
+  ✓ Visit the Resonance Observatory
+  ✓ Talk to Scholar Elena about frequency theory
+  ○ Study harmonic_resonance theory to level 1.0
+
+> study harmonic_resonance
+You spend time analyzing the relationship between crystal frequencies and neural
+resonance patterns. The mathematical principles become clearer as you work through
+the theoretical framework.
+
+[Understanding gained: 0.8 → 1.2, Quest objective completed!]
+
+Quest "Resonance Foundation" completed!
+Unlocked: "Crystalline Applications" quest chain
+```
 
 ## Development
 
@@ -169,6 +210,11 @@ Game content is stored in SQLite and can be modified through:
 - `talk to <person>` - Engage in conversation
 - `ask <person> about <topic>` - Request specific information
 - `faction status` - Check standing with all factions
+
+### Quest Commands
+- `quest status` - View active and completed quests
+- `quest start <quest_name>` - Begin a new quest (if requirements met)
+- `quest help` - Show quest system overview
 
 ### System Commands
 - `save` - Save current game state
