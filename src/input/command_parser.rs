@@ -78,6 +78,28 @@ pub enum ParsedCommand {
     /// Research a new topic
     Research { topic: String },
 
+    /// Quest-related commands
+    /// Show available quests
+    QuestList,
+
+    /// Show active quests
+    QuestActive,
+
+    /// Show quest details
+    QuestInfo { quest_id: String },
+
+    /// Start a quest
+    QuestStart { quest_id: String },
+
+    /// Show quest status
+    QuestStatus { quest_id: String },
+
+    /// Get quest recommendations
+    QuestRecommendations,
+
+    /// Abandon a quest
+    QuestAbandon { quest_id: String },
+
     /// Take an item
     Take { item: String },
 
@@ -209,11 +231,23 @@ impl CommandParser {
 
     /// Parse system commands
     fn parse_system_command(&self, command: String) -> CommandResult {
-        match command.as_str() {
-            "save" => CommandResult::Success(ParsedCommand::Save { slot: None }),
-            "load" => CommandResult::Success(ParsedCommand::Load { slot: None }),
-            "status" => CommandResult::Success(ParsedCommand::Status),
-            "quit" | "exit" => CommandResult::Success(ParsedCommand::Quit),
+        let parts: Vec<&str> = command.split_whitespace().collect();
+
+        match parts.as_slice() {
+            ["save"] => CommandResult::Success(ParsedCommand::Save { slot: None }),
+            ["load"] => CommandResult::Success(ParsedCommand::Load { slot: None }),
+            ["status"] => CommandResult::Success(ParsedCommand::Status),
+            ["quit"] | ["exit"] => CommandResult::Success(ParsedCommand::Quit),
+
+            // Quest commands
+            ["quest", "list"] | ["quests"] => CommandResult::Success(ParsedCommand::QuestList),
+            ["quest", "active"] => CommandResult::Success(ParsedCommand::QuestActive),
+            ["quest", "recommendations"] => CommandResult::Success(ParsedCommand::QuestRecommendations),
+            ["quest", "info", quest_id] => CommandResult::Success(ParsedCommand::QuestInfo { quest_id: quest_id.to_string() }),
+            ["quest", "status", quest_id] => CommandResult::Success(ParsedCommand::QuestStatus { quest_id: quest_id.to_string() }),
+            ["quest", "start", quest_id] => CommandResult::Success(ParsedCommand::QuestStart { quest_id: quest_id.to_string() }),
+            ["quest", "abandon", quest_id] => CommandResult::Success(ParsedCommand::QuestAbandon { quest_id: quest_id.to_string() }),
+
             _ => CommandResult::Error(format!("Unknown system command: {}", command)),
         }
     }
@@ -268,6 +302,21 @@ impl CommandParser {
                  • load game1\n\
                  • status"
             }
+            Some("quests") | Some("quest") => {
+                "Quest Commands:\n\
+                 • quest list - Show all available quests\n\
+                 • quest active - Show your active quests\n\
+                 • quest info <id> - Show detailed quest information\n\
+                 • quest status <id> - Show quest progress\n\
+                 • quest start <id> - Start a quest\n\
+                 • quest abandon <id> - Abandon a quest\n\
+                 • quest recommendations - Get quest suggestions\n\n\
+                 Examples:\n\
+                 • quest list\n\
+                 • quest start resonance_foundation\n\
+                 • quest status crystal_analysis\n\
+                 • quest recommendations"
+            }
 
             Some("examination") | Some("look") => {
                 "Examination Commands:\n\
@@ -286,13 +335,14 @@ impl CommandParser {
                  Examination: look, examine <target>\n\
                  Magic: cast <spell> using <crystal>\n\
                  Social: talk to <person>, ask <person> about <topic>\n\
+                 Quests: quest list, quest start <id>, quest status <id>\n\
                  System: save, load, status, inventory, quit\n\n\
                  For detailed help on a topic, type: help <topic>\n\
-                 Available topics: movement, magic, social, system, examination"
+                 Available topics: movement, magic, social, system, examination, quests"
             }
 
             Some(unknown) => {
-                &format!("No help available for '{}'. Available topics: movement, magic, social, system, examination", unknown)
+                &format!("No help available for '{}'. Available topics: movement, magic, social, system, examination, quests", unknown)
             }
         };
 

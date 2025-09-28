@@ -11,9 +11,13 @@ pub mod factions;
 pub mod knowledge;
 pub mod combat;
 pub mod dialogue;
+pub mod quests;
+pub mod quest_examples;
+
 
 pub use magic::MagicSystem;
 pub use factions::FactionSystem;
 pub use knowledge::KnowledgeSystem;
 pub use combat::CombatSystem;
 pub use dialogue::DialogueSystem;
+pub use quests::QuestSystem;

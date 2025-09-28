@@ -165,7 +165,8 @@ mod tests {
 
     #[test]
     fn test_complete_command_pipeline_performance() {
-        let (mut player, mut world, database, mut magic_system, mut dialogue_system, faction_system, mut knowledge_system) = create_test_env();
+        let (mut player, mut world, database, mut magic_system, mut dialogue_system, mut faction_system, mut knowledge_system) = create_test_env();
+        let mut quest_system = crate::systems::QuestSystem::new();
         let parser = CommandParser::new();
 
         let (duration, _) = time_operation(|| {
@@ -180,8 +181,9 @@ mod tests {
                             &database,
                             &mut magic_system,
                             &mut dialogue_system,
-                            &faction_system,
+                            &mut faction_system,
                             &mut knowledge_system,
+                            &mut quest_system,
                         );
                     }
                     _ => {} // Ignore parsing errors for benchmark
@@ -197,7 +199,8 @@ mod tests {
 
     #[test]
     fn test_individual_command_performance() {
-        let (mut player, mut world, database, mut magic_system, mut dialogue_system, faction_system, mut knowledge_system) = create_test_env();
+        let (mut player, mut world, database, mut magic_system, mut dialogue_system, mut faction_system, mut knowledge_system) = create_test_env();
+        let mut quest_system = crate::systems::QuestSystem::new();
         let parser = CommandParser::new();
 
         // Test individual commands to identify bottlenecks
@@ -220,8 +223,9 @@ mod tests {
                             &database,
                             &mut magic_system,
                             &mut dialogue_system,
-                            &faction_system,
+                            &mut faction_system,
                             &mut knowledge_system,
+                            &mut quest_system,
                         );
                     }
                     _ => {} // Ignore parsing errors for benchmark

@@ -9,6 +9,7 @@ use crate::systems::magic::MagicSystem;
 use crate::systems::dialogue::DialogueSystem;
 use crate::systems::factions::FactionSystem;
 use crate::systems::knowledge::{KnowledgeSystem, LearningMethod};
+use crate::systems::quests::QuestSystem;
 use crate::GameResult;
 
 /// Trait for handling command execution
@@ -21,8 +22,9 @@ pub trait CommandHandler {
         database: &DatabaseManager,
         magic_system: &mut MagicSystem,
         dialogue_system: &mut DialogueSystem,
-        faction_system: &FactionSystem,
+        faction_system: &mut FactionSystem,
         knowledge_system: &mut KnowledgeSystem,
+        quest_system: &mut QuestSystem,
     ) -> GameResult<String>;
 }
 
@@ -38,8 +40,9 @@ impl CommandHandler for DefaultCommandHandler {
         database: &DatabaseManager,
         magic_system: &mut MagicSystem,
         dialogue_system: &mut DialogueSystem,
-        faction_system: &FactionSystem,
+        faction_system: &mut FactionSystem,
         knowledge_system: &mut KnowledgeSystem,
+        quest_system: &mut QuestSystem,
     ) -> GameResult<String> {
         match command {
             ParsedCommand::Move { direction } => {
@@ -104,6 +107,29 @@ impl CommandHandler for DefaultCommandHandler {
 
             ParsedCommand::Drop { item } => {
                 handle_drop(item, player, world)
+            }
+
+            // Quest commands
+            ParsedCommand::QuestList => {
+                handle_quest_list(quest_system, player, faction_system)
+            }
+            ParsedCommand::QuestActive => {
+                handle_quest_active(quest_system)
+            }
+            ParsedCommand::QuestInfo { quest_id } => {
+                handle_quest_info(quest_id, quest_system)
+            }
+            ParsedCommand::QuestStatus { quest_id } => {
+                handle_quest_status(quest_id, quest_system)
+            }
+            ParsedCommand::QuestStart { quest_id } => {
+                handle_quest_start(quest_id, quest_system, player, faction_system)
+            }
+            ParsedCommand::QuestRecommendations => {
+                handle_quest_recommendations(quest_system, player, faction_system)
+            }
+            ParsedCommand::QuestAbandon { quest_id } => {
+                handle_quest_abandon(quest_id, quest_system)
             }
 
             ParsedCommand::Equip { crystal } => {
@@ -851,11 +877,155 @@ pub fn execute_command(
     database: &DatabaseManager,
     magic_system: &mut MagicSystem,
     dialogue_system: &mut DialogueSystem,
-    faction_system: &FactionSystem,
+    faction_system: &mut FactionSystem,
     knowledge_system: &mut KnowledgeSystem,
+    quest_system: &mut QuestSystem,
 ) -> GameResult<String> {
     let handler = DefaultCommandHandler;
-    handler.execute(command, player, world, database, magic_system, dialogue_system, faction_system, knowledge_system)
+    handler.execute(command, player, world, database, magic_system, dialogue_system, faction_system, knowledge_system, quest_system)
+}
+
+/// Handle quest list command
+fn handle_quest_list(quest_system: &QuestSystem, player: &Player, faction_system: &FactionSystem) -> GameResult<String> {
+    let available_quests = quest_system.get_available_quests(player, faction_system);
+
+    if available_quests.is_empty() {
+        return Ok("No quests are currently available to you.".to_string());
+    }
+
+    let mut response = "=== Available Quests ===\n\n".to_string();
+
+    for quest in available_quests {
+        response.push_str(&format!(
+            "• {} [{}]\n  {}\n  Difficulty: {:?} | Category: {:?}\n  Estimated time: {} minutes\n\n",
+            quest.title,
+            quest.id,
+            quest.description,
+            quest.difficulty,
+            quest.category,
+            quest.estimated_duration
+        ));
+    }
+
+    response.push_str("Use 'quest info <id>' for detailed information about a quest.\n");
+    response.push_str("Use 'quest start <id>' to begin a quest.");
+
+    Ok(response)
+}
+
+/// Handle quest active command
+fn handle_quest_active(quest_system: &QuestSystem) -> GameResult<String> {
+    let active_quests = quest_system.get_active_quests();
+
+    if active_quests.is_empty() {
+        return Ok("You have no active quests.".to_string());
+    }
+
+    let mut response = "=== Active Quests ===\n\n".to_string();
+
+    for progress in active_quests {
+        if let Some(quest_def) = quest_system.quest_definitions.get(&progress.quest_id) {
+            let completed_objectives = progress.objective_progress.values()
+                .filter(|p| p.completed)
+                .count();
+            let total_objectives = quest_def.objectives.len();
+
+            response.push_str(&format!(
+                "• {} [{}]\n  Progress: {}/{} objectives completed\n  Time invested: {} minutes\n\n",
+                quest_def.title,
+                progress.quest_id,
+                completed_objectives,
+                total_objectives,
+                progress.time_invested
+            ));
+        }
+    }
+
+    response.push_str("Use 'quest status <id>' for detailed progress information.");
+
+    Ok(response)
+}
+
+/// Handle quest info command
+fn handle_quest_info(quest_id: String, quest_system: &QuestSystem) -> GameResult<String> {
+    if let Some(quest) = quest_system.quest_definitions.get(&quest_id) {
+        let mut response = format!("=== {} ===\n\n", quest.title);
+        response.push_str(&format!("ID: {}\n", quest.id));
+        response.push_str(&format!("Category: {:?}\n", quest.category));
+        response.push_str(&format!("Difficulty: {:?}\n", quest.difficulty));
+        response.push_str(&format!("Estimated Duration: {} minutes\n\n", quest.estimated_duration));
+
+        response.push_str("Description:\n");
+        response.push_str(&quest.description);
+        response.push_str("\n\n");
+
+        response.push_str("Objectives:\n");
+        for (i, objective) in quest.objectives.iter().enumerate() {
+            let optional_tag = if objective.optional { " (Optional)" } else { "" };
+            response.push_str(&format!("{}. {}{}\n", i + 1, objective.description, optional_tag));
+        }
+
+        if !quest.educational_focus.primary_concepts.is_empty() {
+            response.push_str("\nLearning Focus:\n");
+            for concept in &quest.educational_focus.primary_concepts {
+                response.push_str(&format!("• {}\n", concept));
+            }
+        }
+
+        if !quest.involved_npcs.is_empty() {
+            response.push_str("\nKey NPCs:\n");
+            for npc in &quest.involved_npcs {
+                response.push_str(&format!("• {}\n", npc));
+            }
+        }
+
+        Ok(response)
+    } else {
+        Ok(format!("Quest '{}' not found.", quest_id))
+    }
+}
+
+/// Handle quest status command
+fn handle_quest_status(quest_id: String, quest_system: &QuestSystem) -> GameResult<String> {
+    quest_system.get_quest_status(&quest_id)
+}
+
+/// Handle quest start command
+fn handle_quest_start(quest_id: String, quest_system: &mut QuestSystem, player: &Player, faction_system: &FactionSystem) -> GameResult<String> {
+    quest_system.start_quest(&quest_id, player, faction_system)
+}
+
+/// Handle quest recommendations command
+fn handle_quest_recommendations(quest_system: &QuestSystem, player: &Player, faction_system: &FactionSystem) -> GameResult<String> {
+    let recommendations = quest_system.get_quest_recommendations(player, faction_system);
+
+    if recommendations.is_empty() {
+        return Ok("No quest recommendations available at this time.".to_string());
+    }
+
+    let mut response = "=== Quest Recommendations ===\n\n".to_string();
+
+    for (quest_id, reason) in recommendations {
+        if let Some(quest) = quest_system.quest_definitions.get(&quest_id) {
+            response.push_str(&format!(
+                "• {} [{}]\n  Reason: {}\n  Difficulty: {:?}\n\n",
+                quest.title,
+                quest_id,
+                reason,
+                quest.difficulty
+            ));
+        }
+    }
+
+    response.push_str("Use 'quest info <id>' for more details about any recommended quest.");
+
+    Ok(response)
+}
+
+/// Handle quest abandon command
+fn handle_quest_abandon(_quest_id: String, _quest_system: &mut QuestSystem) -> GameResult<String> {
+    // Implementation would mark quest as abandoned and clean up progress
+    Ok("Quest abandonment feature not yet implemented.".to_string())
 }
 
 #[cfg(test)]

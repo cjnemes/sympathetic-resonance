@@ -12,7 +12,7 @@ use crate::core::world_state::{Location, Direction, MagicalProperties, FactionPr
 use crate::GameResult;
 
 /// Database schema version for migration management
-const SCHEMA_VERSION: i32 = 2;
+const SCHEMA_VERSION: i32 = 3;
 
 /// Manager for all database operations
 pub struct DatabaseManager {
@@ -216,6 +216,89 @@ impl DatabaseManager {
             [],
         ).map_err(|e| crate::GameError::DatabaseError(format!("Failed to create faction presence table: {}", e)))?;
 
+        // Quest definitions table
+        self.connection.execute(
+            "CREATE TABLE IF NOT EXISTS quest_definitions (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                category TEXT NOT NULL,
+                difficulty TEXT NOT NULL,
+                requirements TEXT NOT NULL, -- JSON
+                objectives TEXT NOT NULL, -- JSON array
+                rewards TEXT NOT NULL, -- JSON
+                faction_effects TEXT, -- JSON
+                educational_focus TEXT, -- JSON
+                branching_paths TEXT, -- JSON
+                involved_npcs TEXT, -- JSON array
+                locations TEXT, -- JSON array
+                estimated_duration INTEGER NOT NULL,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )",
+            [],
+        ).map_err(|e| crate::GameError::DatabaseError(format!("Failed to create quest definitions table: {}", e)))?;
+
+        // Player quest progress tracking
+        self.connection.execute(
+            "CREATE TABLE IF NOT EXISTS player_quest_progress (
+                player_id TEXT NOT NULL,
+                quest_id TEXT NOT NULL,
+                status TEXT NOT NULL,
+                started_at INTEGER NOT NULL,
+                completed_at INTEGER,
+                objective_progress TEXT NOT NULL, -- JSON
+                chosen_branch TEXT,
+                player_choices TEXT, -- JSON
+                time_invested INTEGER NOT NULL DEFAULT 0,
+                quest_variables TEXT, -- JSON
+                learning_progress TEXT, -- JSON
+                PRIMARY KEY(player_id, quest_id),
+                FOREIGN KEY(quest_id) REFERENCES quest_definitions(id)
+            )",
+            [],
+        ).map_err(|e| crate::GameError::DatabaseError(format!("Failed to create player quest progress table: {}", e)))?;
+
+        // Quest objective completion log for detailed tracking
+        self.connection.execute(
+            "CREATE TABLE IF NOT EXISTS quest_objective_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                player_id TEXT NOT NULL,
+                quest_id TEXT NOT NULL,
+                objective_id TEXT NOT NULL,
+                completed_at INTEGER NOT NULL,
+                progress_value REAL NOT NULL,
+                completion_method TEXT,
+                learning_data TEXT, -- JSON
+                FOREIGN KEY(quest_id) REFERENCES quest_definitions(id)
+            )",
+            [],
+        ).map_err(|e| crate::GameError::DatabaseError(format!("Failed to create quest objective log table: {}", e)))?;
+
+        // Quest rewards awarded to players
+        self.connection.execute(
+            "CREATE TABLE IF NOT EXISTS quest_rewards_awarded (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                player_id TEXT NOT NULL,
+                quest_id TEXT NOT NULL,
+                reward_type TEXT NOT NULL,
+                reward_data TEXT NOT NULL, -- JSON
+                awarded_at INTEGER NOT NULL,
+                FOREIGN KEY(quest_id) REFERENCES quest_definitions(id)
+            )",
+            [],
+        ).map_err(|e| crate::GameError::DatabaseError(format!("Failed to create quest rewards table: {}", e)))?;
+
+        // Global quest state and unlocks
+        self.connection.execute(
+            "CREATE TABLE IF NOT EXISTS quest_global_state (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL, -- JSON
+                updated_at INTEGER NOT NULL
+            )",
+            [],
+        ).map_err(|e| crate::GameError::DatabaseError(format!("Failed to create quest global state table: {}", e)))?;
+
         // Create indexes for performance
         self.create_indexes()?;
 
@@ -236,6 +319,16 @@ impl DatabaseManager {
             "CREATE INDEX IF NOT EXISTS idx_learning_activities_timestamp ON learning_activities(timestamp)",
             "CREATE INDEX IF NOT EXISTS idx_theories_tier ON magic_theories(tier)",
             "CREATE INDEX IF NOT EXISTS idx_theories_category ON magic_theories(category)",
+            // Quest system indexes
+            "CREATE INDEX IF NOT EXISTS idx_quest_definitions_category ON quest_definitions(category)",
+            "CREATE INDEX IF NOT EXISTS idx_quest_definitions_difficulty ON quest_definitions(difficulty)",
+            "CREATE INDEX IF NOT EXISTS idx_player_quest_progress_player ON player_quest_progress(player_id)",
+            "CREATE INDEX IF NOT EXISTS idx_player_quest_progress_status ON player_quest_progress(status)",
+            "CREATE INDEX IF NOT EXISTS idx_quest_objective_log_player ON quest_objective_log(player_id)",
+            "CREATE INDEX IF NOT EXISTS idx_quest_objective_log_quest ON quest_objective_log(quest_id)",
+            "CREATE INDEX IF NOT EXISTS idx_quest_objective_log_completed ON quest_objective_log(completed_at)",
+            "CREATE INDEX IF NOT EXISTS idx_quest_rewards_player ON quest_rewards_awarded(player_id)",
+            "CREATE INDEX IF NOT EXISTS idx_quest_rewards_quest ON quest_rewards_awarded(quest_id)",
         ];
 
         for index_sql in indexes {
@@ -1354,6 +1447,292 @@ impl DatabaseManager {
         }
 
         Ok(npcs)
+    }
+
+    /// Insert a quest definition into the database
+    pub fn insert_quest_definition(&self, quest: &crate::systems::quests::QuestDefinition) -> GameResult<()> {
+        let requirements_json = serde_json::to_string(&quest.requirements)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize requirements: {}", e)))?;
+        let objectives_json = serde_json::to_string(&quest.objectives)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize objectives: {}", e)))?;
+        let rewards_json = serde_json::to_string(&quest.rewards)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize rewards: {}", e)))?;
+        let faction_effects_json = serde_json::to_string(&quest.faction_effects)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize faction effects: {}", e)))?;
+        let educational_focus_json = serde_json::to_string(&quest.educational_focus)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize educational focus: {}", e)))?;
+        let branching_paths_json = serde_json::to_string(&quest.branching_paths)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize branching paths: {}", e)))?;
+        let involved_npcs_json = serde_json::to_string(&quest.involved_npcs)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize involved NPCs: {}", e)))?;
+        let locations_json = serde_json::to_string(&quest.locations)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize locations: {}", e)))?;
+
+        let category_str = match quest.category {
+            crate::systems::quests::QuestCategory::Tutorial => "Tutorial",
+            crate::systems::quests::QuestCategory::Research => "Research",
+            crate::systems::quests::QuestCategory::Political => "Political",
+            crate::systems::quests::QuestCategory::Practical => "Practical",
+            crate::systems::quests::QuestCategory::Social => "Social",
+            crate::systems::quests::QuestCategory::Experimental => "Experimental",
+            crate::systems::quests::QuestCategory::Narrative => "Narrative",
+        };
+
+        let difficulty_str = match quest.difficulty {
+            crate::systems::quests::QuestDifficulty::Beginner => "Beginner",
+            crate::systems::quests::QuestDifficulty::Intermediate => "Intermediate",
+            crate::systems::quests::QuestDifficulty::Advanced => "Advanced",
+            crate::systems::quests::QuestDifficulty::Expert => "Expert",
+            crate::systems::quests::QuestDifficulty::Master => "Master",
+        };
+
+        let now = chrono::Utc::now().timestamp();
+
+        self.connection.execute(
+            "INSERT OR REPLACE INTO quest_definitions
+             (id, title, description, category, difficulty, requirements, objectives, rewards,
+              faction_effects, educational_focus, branching_paths, involved_npcs, locations,
+              estimated_duration, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            params![
+                quest.id, quest.title, quest.description, category_str, difficulty_str,
+                requirements_json, objectives_json, rewards_json, faction_effects_json,
+                educational_focus_json, branching_paths_json, involved_npcs_json, locations_json,
+                quest.estimated_duration, now, now
+            ],
+        ).map_err(|e| crate::GameError::DatabaseError(format!("Failed to insert quest definition: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Load all quest definitions from the database
+    pub fn load_quest_definitions(&self) -> GameResult<std::collections::HashMap<String, crate::systems::quests::QuestDefinition>> {
+        let mut quests = std::collections::HashMap::new();
+
+        let mut stmt = self.connection.prepare(
+            "SELECT id, title, description, category, difficulty, requirements, objectives, rewards,
+             faction_effects, educational_focus, branching_paths, involved_npcs, locations, estimated_duration
+             FROM quest_definitions"
+        ).map_err(|e| crate::GameError::DatabaseError(format!("Failed to prepare quest query: {}", e)))?;
+
+        let quest_rows = stmt.query_map([], |row| {
+            let id: String = row.get(0)?;
+            let title: String = row.get(1)?;
+            let description: String = row.get(2)?;
+            let category_str: String = row.get(3)?;
+            let difficulty_str: String = row.get(4)?;
+            let requirements_json: String = row.get(5)?;
+            let objectives_json: String = row.get(6)?;
+            let rewards_json: String = row.get(7)?;
+            let faction_effects_json: String = row.get(8)?;
+            let educational_focus_json: String = row.get(9)?;
+            let branching_paths_json: String = row.get(10)?;
+            let involved_npcs_json: String = row.get(11)?;
+            let locations_json: String = row.get(12)?;
+            let estimated_duration: i32 = row.get(13)?;
+
+            let category = match category_str.as_str() {
+                "Tutorial" => crate::systems::quests::QuestCategory::Tutorial,
+                "Research" => crate::systems::quests::QuestCategory::Research,
+                "Political" => crate::systems::quests::QuestCategory::Political,
+                "Practical" => crate::systems::quests::QuestCategory::Practical,
+                "Social" => crate::systems::quests::QuestCategory::Social,
+                "Experimental" => crate::systems::quests::QuestCategory::Experimental,
+                "Narrative" => crate::systems::quests::QuestCategory::Narrative,
+                _ => crate::systems::quests::QuestCategory::Tutorial,
+            };
+
+            let difficulty = match difficulty_str.as_str() {
+                "Beginner" => crate::systems::quests::QuestDifficulty::Beginner,
+                "Intermediate" => crate::systems::quests::QuestDifficulty::Intermediate,
+                "Advanced" => crate::systems::quests::QuestDifficulty::Advanced,
+                "Expert" => crate::systems::quests::QuestDifficulty::Expert,
+                "Master" => crate::systems::quests::QuestDifficulty::Master,
+                _ => crate::systems::quests::QuestDifficulty::Beginner,
+            };
+
+            let requirements: crate::systems::quests::QuestRequirements = serde_json::from_str(&requirements_json)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(5, "Invalid requirements JSON".to_string(), rusqlite::types::Type::Text))?;
+            let objectives: Vec<crate::systems::quests::QuestObjective> = serde_json::from_str(&objectives_json)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(6, "Invalid objectives JSON".to_string(), rusqlite::types::Type::Text))?;
+            let rewards: crate::systems::quests::QuestRewards = serde_json::from_str(&rewards_json)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(7, "Invalid rewards JSON".to_string(), rusqlite::types::Type::Text))?;
+            let faction_effects: std::collections::HashMap<crate::systems::factions::FactionId, i32> = serde_json::from_str(&faction_effects_json)
+                .unwrap_or_else(|_| std::collections::HashMap::new());
+            let educational_focus: crate::systems::quests::EducationalObjectives = serde_json::from_str(&educational_focus_json)
+                .map_err(|_| rusqlite::Error::InvalidColumnType(9, "Invalid educational focus JSON".to_string(), rusqlite::types::Type::Text))?;
+            let branching_paths: std::collections::HashMap<String, crate::systems::quests::QuestBranch> = serde_json::from_str(&branching_paths_json)
+                .unwrap_or_else(|_| std::collections::HashMap::new());
+            let involved_npcs: Vec<String> = serde_json::from_str(&involved_npcs_json)
+                .unwrap_or_else(|_| Vec::new());
+            let locations: Vec<String> = serde_json::from_str(&locations_json)
+                .unwrap_or_else(|_| Vec::new());
+
+            Ok((id.clone(), crate::systems::quests::QuestDefinition {
+                id,
+                title,
+                description,
+                category,
+                difficulty,
+                requirements,
+                objectives,
+                rewards,
+                faction_effects,
+                educational_focus,
+                branching_paths,
+                involved_npcs,
+                locations,
+                estimated_duration,
+            }))
+        }).map_err(|e| crate::GameError::DatabaseError(format!("Failed to query quest definitions: {}", e)))?;
+
+        for quest_result in quest_rows {
+            let (id, quest) = quest_result
+                .map_err(|e| crate::GameError::DatabaseError(format!("Failed to parse quest definition: {}", e)))?;
+            quests.insert(id, quest);
+        }
+
+        Ok(quests)
+    }
+
+    /// Save player quest progress to database
+    pub fn save_quest_progress(&self, player_id: &str, progress: &crate::systems::quests::QuestProgress) -> GameResult<()> {
+        let objective_progress_json = serde_json::to_string(&progress.objective_progress)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize objective progress: {}", e)))?;
+        let player_choices_json = serde_json::to_string(&progress.player_choices)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize player choices: {}", e)))?;
+        let quest_variables_json = serde_json::to_string(&progress.quest_variables)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize quest variables: {}", e)))?;
+        let learning_progress_json = serde_json::to_string(&progress.learning_progress)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize learning progress: {}", e)))?;
+
+        let status_str = match progress.status {
+            crate::systems::quests::QuestStatus::Available => "Available",
+            crate::systems::quests::QuestStatus::NotAvailable => "NotAvailable",
+            crate::systems::quests::QuestStatus::InProgress => "InProgress",
+            crate::systems::quests::QuestStatus::Completed => "Completed",
+            crate::systems::quests::QuestStatus::Failed => "Failed",
+            crate::systems::quests::QuestStatus::Abandoned => "Abandoned",
+        };
+
+        self.connection.execute(
+            "INSERT OR REPLACE INTO player_quest_progress
+             (player_id, quest_id, status, started_at, completed_at, objective_progress,
+              chosen_branch, player_choices, time_invested, quest_variables, learning_progress)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            params![
+                player_id, progress.quest_id, status_str, progress.started_at.timestamp(),
+                progress.completed_at.map(|dt| dt.timestamp()), objective_progress_json,
+                progress.chosen_branch, player_choices_json, progress.time_invested,
+                quest_variables_json, learning_progress_json
+            ],
+        ).map_err(|e| crate::GameError::DatabaseError(format!("Failed to save quest progress: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Load player quest progress from database
+    pub fn load_quest_progress(&self, player_id: &str) -> GameResult<std::collections::HashMap<String, crate::systems::quests::QuestProgress>> {
+        let mut progress_map = std::collections::HashMap::new();
+
+        let mut stmt = self.connection.prepare(
+            "SELECT quest_id, status, started_at, completed_at, objective_progress,
+             chosen_branch, player_choices, time_invested, quest_variables, learning_progress
+             FROM player_quest_progress WHERE player_id = ?1"
+        ).map_err(|e| crate::GameError::DatabaseError(format!("Failed to prepare quest progress query: {}", e)))?;
+
+        let progress_rows = stmt.query_map([player_id], |row| {
+            let quest_id: String = row.get(0)?;
+            let status_str: String = row.get(1)?;
+            let started_at_timestamp: i64 = row.get(2)?;
+            let completed_at_timestamp: Option<i64> = row.get(3)?;
+            let objective_progress_json: String = row.get(4)?;
+            let chosen_branch: Option<String> = row.get(5)?;
+            let player_choices_json: String = row.get(6)?;
+            let time_invested: i32 = row.get(7)?;
+            let quest_variables_json: String = row.get(8)?;
+            let learning_progress_json: String = row.get(9)?;
+
+            let status = match status_str.as_str() {
+                "Available" => crate::systems::quests::QuestStatus::Available,
+                "NotAvailable" => crate::systems::quests::QuestStatus::NotAvailable,
+                "InProgress" => crate::systems::quests::QuestStatus::InProgress,
+                "Completed" => crate::systems::quests::QuestStatus::Completed,
+                "Failed" => crate::systems::quests::QuestStatus::Failed,
+                "Abandoned" => crate::systems::quests::QuestStatus::Abandoned,
+                _ => crate::systems::quests::QuestStatus::NotAvailable,
+            };
+
+            let started_at = chrono::DateTime::from_timestamp(started_at_timestamp, 0)
+                .unwrap_or_else(|| chrono::Utc::now());
+            let completed_at = completed_at_timestamp.and_then(|ts| chrono::DateTime::from_timestamp(ts, 0));
+
+            let objective_progress: std::collections::HashMap<String, crate::systems::quests::ObjectiveProgress> =
+                serde_json::from_str(&objective_progress_json).unwrap_or_else(|_| std::collections::HashMap::new());
+            let player_choices: std::collections::HashMap<String, String> =
+                serde_json::from_str(&player_choices_json).unwrap_or_else(|_| std::collections::HashMap::new());
+            let quest_variables: std::collections::HashMap<String, String> =
+                serde_json::from_str(&quest_variables_json).unwrap_or_else(|_| std::collections::HashMap::new());
+            let learning_progress: crate::systems::quests::QuestLearningProgress =
+                serde_json::from_str(&learning_progress_json).unwrap_or_else(|_| crate::systems::quests::QuestLearningProgress {
+                    mastered_concepts: Vec::new(),
+                    demonstrated_methods: Vec::new(),
+                    assessment_scores: std::collections::HashMap::new(),
+                    learning_metrics: crate::systems::quests::LearningMetrics {
+                        completion_efficiency: 0.0,
+                        first_attempt_success_rate: 0.0,
+                        help_requests: 0,
+                        application_accuracy: 0.0,
+                    },
+                });
+
+            Ok((quest_id.clone(), crate::systems::quests::QuestProgress {
+                quest_id,
+                status,
+                started_at,
+                completed_at,
+                objective_progress,
+                chosen_branch,
+                player_choices,
+                time_invested,
+                quest_variables,
+                learning_progress,
+            }))
+        }).map_err(|e| crate::GameError::DatabaseError(format!("Failed to query quest progress: {}", e)))?;
+
+        for progress_result in progress_rows {
+            let (quest_id, progress) = progress_result
+                .map_err(|e| crate::GameError::DatabaseError(format!("Failed to parse quest progress: {}", e)))?;
+            progress_map.insert(quest_id, progress);
+        }
+
+        Ok(progress_map)
+    }
+
+    /// Log quest objective completion
+    pub fn log_quest_objective_completion(
+        &self,
+        player_id: &str,
+        quest_id: &str,
+        objective_id: &str,
+        progress_value: f32,
+        completion_method: Option<&str>,
+        learning_data: &std::collections::HashMap<String, String>,
+    ) -> GameResult<()> {
+        let learning_data_json = serde_json::to_string(learning_data)
+            .map_err(|e| crate::GameError::DatabaseError(format!("Failed to serialize learning data: {}", e)))?;
+
+        self.connection.execute(
+            "INSERT INTO quest_objective_log
+             (player_id, quest_id, objective_id, completed_at, progress_value, completion_method, learning_data)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![
+                player_id, quest_id, objective_id, chrono::Utc::now().timestamp(),
+                progress_value, completion_method, learning_data_json
+            ],
+        ).map_err(|e| crate::GameError::DatabaseError(format!("Failed to log quest objective completion: {}", e)))?;
+
+        Ok(())
     }
 
     /// Get database connection for advanced operations
