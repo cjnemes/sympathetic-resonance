@@ -220,15 +220,16 @@ fn handle_examine(
 /// Handle magic casting
 fn handle_magic(
     spell_type: String,
-    crystal: Option<String>,
+    _crystal: Option<String>,
     target: Option<String>,
     player: &mut Player,
     world: &mut WorldState,
 ) -> GameResult<String> {
     // Basic magic implementation - will be expanded with full calculation engine
 
-    // Check if player has a crystal
-    let active_crystal = player.active_crystal()
+    // Get crystal info before borrowing mutably
+    let crystal_info = player.active_crystal()
+        .map(|c| (c.display_name(), c.frequency))
         .ok_or_else(|| crate::GameError::InsufficientResources("No crystal equipped".to_string()))?;
 
     // Check mental energy
@@ -246,7 +247,7 @@ fn handle_magic(
     player.use_mental_energy(energy_cost, fatigue_cost)?;
 
     // Add magical signature to current location
-    world.add_magical_signature(spell_type.clone(), 0.5, active_crystal.frequency);
+    world.add_magical_signature(spell_type.clone(), 0.5, crystal_info.1);
 
     // Advance time
     world.advance_time(2);
@@ -255,11 +256,11 @@ fn handle_magic(
     // Generate response
     let mut response = format!(
         "You focus your mental energy through the {} crystal, casting {}",
-        active_crystal.display_name(),
+        crystal_info.0,
         spell_type
     );
 
-    if let Some(target_str) = target {
+    if let Some(ref target_str) = target {
         response.push_str(&format!(" on the {}", target_str));
     }
 

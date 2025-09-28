@@ -39,6 +39,9 @@ rand = "0.8"
 # Date and time handling
 chrono = { version = "0.4", features = ["serde"] }
 
+# Directory utilities
+dirs = "5.0"
+
 [dev-dependencies]
 # Testing utilities
 tempfile = "3.0"
