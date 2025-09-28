@@ -66,7 +66,7 @@ impl ResonanceAnalyzer {
         // Environmental modifiers
         let env_modifier = self.calculate_environmental_modifier(world);
 
-        (base_strength * env_modifier).min(1.0).max(0.1)
+        (base_strength * env_modifier).clamp(0.1, 1.0)
     }
 
     fn is_personal_item(&self, target: &str, caster: &Player) -> bool {

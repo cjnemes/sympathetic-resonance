@@ -5,13 +5,12 @@
 
 use crate::core::{Player, WorldState};
 use crate::persistence::serialization::{
-    GameStateData, SaveFileInfo, serialize_game_state, deserialize_game_state,
+    SaveFileInfo, serialize_game_state, deserialize_game_state,
     validate_game_state, compress_save_data, decompress_save_data
 };
 use crate::GameResult;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
 
 /// Manages save file operations
 pub struct SaveManager {

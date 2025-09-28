@@ -221,29 +221,33 @@ impl WorldState {
 
     /// Move to a new location if possible
     pub fn move_to_location(&mut self, direction: Direction) -> GameResult<String> {
-        let current_location = self.current_location()
-            .ok_or_else(|| crate::GameError::ContentNotFound(
-                format!("Current location '{}' not found", self.current_location)
-            ))?;
+        // Get destination before any mutable operations
+        let destination = {
+            let current_location = self.current_location()
+                .ok_or_else(|| crate::GameError::ContentNotFound(
+                    format!("Current location '{}' not found", self.current_location)
+                ))?;
 
-        let destination = current_location.exits.get(&direction)
-            .ok_or_else(|| crate::GameError::InvalidCommand(
-                "You can't go that way".to_string()
-            ))?;
+            current_location.exits.get(&direction)
+                .ok_or_else(|| crate::GameError::InvalidCommand(
+                    "You can't go that way".to_string()
+                ))?
+                .clone()
+        };
 
-        if !self.locations.contains_key(destination) {
+        if !self.locations.contains_key(&destination) {
             return Err(crate::GameError::ContentNotFound(
                 format!("Destination '{}' not found", destination)
             ).into());
         }
 
         // Mark new location as visited
-        if let Some(location) = self.locations.get_mut(destination) {
+        if let Some(location) = self.locations.get_mut(&destination) {
             location.visited = true;
         }
 
         self.current_location = destination.clone();
-        Ok(destination.clone())
+        Ok(destination)
     }
 
     /// Add a location to the world

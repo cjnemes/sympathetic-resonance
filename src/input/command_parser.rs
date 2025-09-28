@@ -2,7 +2,6 @@
 
 use crate::input::natural_language::{InputTokenizer, CommandIntent};
 use crate::core::world_state::Direction;
-use crate::GameResult;
 use serde::{Deserialize, Serialize};
 
 /// Main command parser that processes user input

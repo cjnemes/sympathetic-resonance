@@ -192,6 +192,11 @@ impl FactionSystem {
         }
         standings
     }
+
+    /// Get relationship strength between two factions (-1.0 to 1.0)
+    pub fn get_relationship_strength(&self, faction1: FactionId, faction2: FactionId) -> f32 {
+        self.politics.get_relationship(faction1, faction2).to_strength()
+    }
 }
 
 impl Faction {

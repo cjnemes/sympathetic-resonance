@@ -1,16 +1,6 @@
 use clap::{Arg, Command};
 use log::info;
-use std::env;
-
-mod core;
-mod systems;
-mod input;
-mod content;
-mod persistence;
-mod ui;
-
-use crate::core::game_engine::GameEngine;
-use crate::persistence::database::DatabaseManager;
+use sympathetic_resonance::{GameEngine, DatabaseManager};
 
 fn main() -> anyhow::Result<()> {
     // Initialize logging

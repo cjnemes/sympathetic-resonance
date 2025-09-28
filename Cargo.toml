@@ -46,6 +46,11 @@ dirs = "5.0"
 # Testing utilities
 tempfile = "3.0"
 pretty_assertions = "1.0"
+criterion = "0.5"
+
+[[bench]]
+name = "performance_benchmarks"
+harness = false
 
 [profile.release]
 # Optimize for size and performance

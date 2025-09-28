@@ -2,9 +2,13 @@
 //!
 //! This module contains handlers that execute parsed commands
 
-use crate::input::command_parser::{ParsedCommand, CommandResult};
+use crate::input::command_parser::ParsedCommand;
 use crate::core::{Player, WorldState};
 use crate::persistence::DatabaseManager;
+use crate::systems::magic::MagicSystem;
+use crate::systems::dialogue::DialogueSystem;
+use crate::systems::factions::FactionSystem;
+use crate::systems::knowledge::{KnowledgeSystem, LearningMethod};
 use crate::GameResult;
 
 /// Trait for handling command execution
@@ -15,6 +19,10 @@ pub trait CommandHandler {
         player: &mut Player,
         world: &mut WorldState,
         database: &DatabaseManager,
+        magic_system: &mut MagicSystem,
+        dialogue_system: &mut DialogueSystem,
+        faction_system: &FactionSystem,
+        knowledge_system: &mut KnowledgeSystem,
     ) -> GameResult<String>;
 }
 
@@ -28,6 +36,10 @@ impl CommandHandler for DefaultCommandHandler {
         player: &mut Player,
         world: &mut WorldState,
         database: &DatabaseManager,
+        magic_system: &mut MagicSystem,
+        dialogue_system: &mut DialogueSystem,
+        faction_system: &FactionSystem,
+        knowledge_system: &mut KnowledgeSystem,
     ) -> GameResult<String> {
         match command {
             ParsedCommand::Move { direction } => {
@@ -43,15 +55,15 @@ impl CommandHandler for DefaultCommandHandler {
             }
 
             ParsedCommand::CastMagic { spell_type, crystal, target } => {
-                handle_magic(spell_type, crystal, target, player, world)
+                handle_magic(spell_type, crystal, target, player, world, magic_system)
             }
 
             ParsedCommand::Talk { target } => {
-                handle_talk(target, player, world, database)
+                handle_talk(target, player, world, database, dialogue_system, faction_system)
             }
 
             ParsedCommand::Ask { target, topic } => {
-                handle_ask(target, topic, player, world, database)
+                handle_ask(target, topic, player, world, database, dialogue_system, faction_system)
             }
 
             ParsedCommand::Inventory => {
@@ -79,11 +91,11 @@ impl CommandHandler for DefaultCommandHandler {
             }
 
             ParsedCommand::Study { theory } => {
-                handle_study(theory, player, database)
+                handle_study(theory, player, database, knowledge_system, world)
             }
 
             ParsedCommand::Research { topic } => {
-                handle_research(topic, player)
+                handle_research(topic, player, knowledge_system, world)
             }
 
             ParsedCommand::Take { item } => {
@@ -135,15 +147,11 @@ fn handle_movement(
             world.advance_time(1);
             player.playtime_minutes += 1;
 
+            let mut response = format!("You head {}.\n\n", direction.display_name());
+
             let location = world.current_location()
                 .ok_or_else(|| crate::GameError::ContentNotFound("Current location not found".to_string()))?;
 
-            // Mark location as visited
-            if let Some(loc) = world.locations.get_mut(&destination) {
-                loc.visited = true;
-            }
-
-            let mut response = format!("You head {}.\n\n", direction.display_name());
             response.push_str(&generate_location_description(location, player));
 
             Ok(response)
@@ -224,95 +232,139 @@ fn handle_magic(
     target: Option<String>,
     player: &mut Player,
     world: &mut WorldState,
+    magic_system: &mut MagicSystem,
 ) -> GameResult<String> {
-    // Basic magic implementation - will be expanded with full calculation engine
+    // Use the MagicSystem for proper calculation and execution
+    match magic_system.attempt_magic(&spell_type, player, world, target.as_deref()) {
+        Ok(result) => {
+            let mut response = String::new();
 
-    // Get crystal info before borrowing mutably
-    let crystal_info = player.active_crystal()
-        .map(|c| (c.display_name(), c.frequency))
-        .ok_or_else(|| crate::GameError::InsufficientResources("No crystal equipped".to_string()))?;
+            if result.success {
+                response.push_str(&format!(
+                    "You successfully cast {}{}.\n\n",
+                    spell_type,
+                    target.as_ref().map(|t| format!(" on {}", t)).unwrap_or_default()
+                ));
 
-    // Check mental energy
-    let energy_cost = 15; // Basic cost
-    let fatigue_cost = 8;
-
-    if player.effective_mental_energy() < energy_cost {
-        return Ok(format!(
-            "You don't have enough mental energy to cast {}. You need {} energy but only have {} effective energy.",
-            spell_type, energy_cost, player.effective_mental_energy()
-        ));
-    }
-
-    // Use energy
-    player.use_mental_energy(energy_cost, fatigue_cost)?;
-
-    // Add magical signature to current location
-    world.add_magical_signature(spell_type.clone(), 0.5, crystal_info.1);
-
-    // Advance time
-    world.advance_time(2);
-    player.playtime_minutes += 2;
-
-    // Generate response
-    let mut response = format!(
-        "You focus your mental energy through the {} crystal, casting {}",
-        crystal_info.0,
-        spell_type
-    );
-
-    if let Some(ref target_str) = target {
-        response.push_str(&format!(" on the {}", target_str));
-    }
-
-    response.push_str(".\n\n");
-
-    // Add results based on spell type
-    match spell_type.as_str() {
-        "light" => {
-            response.push_str("A soft, steady light emanates from the crystal, illuminating the area.");
-        }
-        "healing" => {
-            if target.is_some() {
-                response.push_str("Warm energy flows through the sympathetic connection, accelerating natural healing processes.");
+                response.push_str(&result.explanation);
+                response.push_str(&format!(
+                    "\n\nPower Level: {:.1}\nEnergy Cost: {}\nTime Taken: {} minutes",
+                    result.power_level,
+                    result.energy_cost,
+                    result.time_cost
+                ));
             } else {
-                response.push_str("You feel a warm, healing energy flow through your body.");
+                response.push_str(&format!(
+                    "Your attempt to cast {} failed.\n\n",
+                    spell_type
+                ));
+                response.push_str(&result.explanation);
             }
+
+            // Show current energy status
+            response.push_str(&format!(
+                "\n\nMental Energy: {}/{} (Fatigue: {})",
+                player.mental_state.current_energy,
+                player.mental_state.max_energy,
+                player.mental_state.fatigue
+            ));
+
+            Ok(response)
         }
-        _ => {
-            response.push_str("The magical energy manifests according to your will.");
+        Err(e) => {
+            Ok(format!("Unable to cast {}: {}", spell_type, e))
         }
     }
-
-    // Show energy status
-    response.push_str(&format!(
-        "\n\nMental Energy: {}/{} (Fatigue: {})",
-        player.mental_state.current_energy,
-        player.mental_state.max_energy,
-        player.mental_state.fatigue
-    ));
-
-    Ok(response)
 }
 
-/// Handle talking to NPCs
+/// Handle talking to NPCs with theory-aware responses
 fn handle_talk(
     target: String,
-    _player: &Player,
-    _world: &WorldState,
+    player: &Player,
+    world: &WorldState,
     _database: &DatabaseManager,
+    dialogue_system: &mut DialogueSystem,
+    faction_system: &FactionSystem,
 ) -> GameResult<String> {
-    Ok(format!("You approach the {} to start a conversation. [NPC dialogue system not yet implemented]", target))
+    // For now, try to find an NPC in the current location
+    let location = world.current_location()
+        .ok_or_else(|| crate::GameError::ContentNotFound("Current location not found".to_string()))?;
+
+    // Check if the target is mentioned in the location description or NPCs
+    if location.description.to_lowercase().contains(&target.to_lowercase()) {
+        match dialogue_system.talk_to_npc(&target, player, faction_system) {
+            Ok(mut response) => {
+                // Add theory-aware topics
+                let theory_topics = dialogue_system.get_theory_topics(&target, player);
+                let theory_only_topics: Vec<String> = theory_topics.iter()
+                    .filter(|topic| {
+                        matches!(topic.as_str(),
+                            "resonance_theory" | "crystal_research" | "mental_techniques" |
+                            "light_experiments" | "healing_methods" | "detection_techniques" |
+                            "network_theory" | "advanced_amplification" | "theoretical_mastery" |
+                            "advanced_theory_discussion" | "research_collaboration" |
+                            "theoretical_breakthroughs" | "healing_applications" |
+                            "magical_detection" | "long_distance_communication" | "spell_innovation"
+                        )
+                    })
+                    .cloned()
+                    .collect();
+
+                if !theory_only_topics.is_empty() {
+                    response.push_str("\n\nTheory Discussion Topics: ");
+                    response.push_str(&theory_only_topics.join(", "));
+                }
+
+                Ok(response)
+            },
+            Err(_) => {
+                // If specific NPC not found, create a basic interaction
+                Ok(format!(
+                    "You approach the {} to start a conversation.\n\nThe {} acknowledges you but seems to have little to say.\n\n[Full NPC dialogue system loading...]",
+                    target, target
+                ))
+            }
+        }
+    } else {
+        Ok(format!("You don't see {} here to talk to.", target))
+    }
 }
 
-/// Handle asking NPCs about topics
+/// Handle asking NPCs about topics with theory-aware responses
 fn handle_ask(
     target: String,
     topic: String,
-    _player: &Player,
-    _world: &WorldState,
+    player: &Player,
+    world: &WorldState,
     _database: &DatabaseManager,
+    dialogue_system: &mut DialogueSystem,
+    faction_system: &FactionSystem,
 ) -> GameResult<String> {
-    Ok(format!("You ask the {} about {}. [NPC dialogue system not yet implemented]", target, topic))
+    // For now, try to find an NPC in the current location
+    let location = world.current_location()
+        .ok_or_else(|| crate::GameError::ContentNotFound("Current location not found".to_string()))?;
+
+    // Check if the target is mentioned in the location description or NPCs
+    if location.description.to_lowercase().contains(&target.to_lowercase()) {
+        // First try theory-aware responses
+        if let Some(theory_response) = dialogue_system.get_theory_response(&target, &topic, player) {
+            return Ok(format!("You ask {} about {}.\n\n{}", target, topic, theory_response));
+        }
+
+        // Fall back to standard dialogue system
+        match dialogue_system.ask_about_topic(&target, &topic, player, faction_system) {
+            Ok(response) => Ok(response),
+            Err(_) => {
+                // If specific NPC not found, create a basic interaction
+                Ok(format!(
+                    "You ask the {} about {}.\n\nThe {} doesn't seem to know much about that topic.\n\n[Topic: {} - Full dialogue system loading...]",
+                    target, topic, target, topic
+                ))
+            }
+        }
+    } else {
+        Ok(format!("You don't see {} here to ask about {}.", target, topic))
+    }
 }
 
 /// Handle inventory display
@@ -353,7 +405,7 @@ fn handle_inventory(player: &Player) -> GameResult<String> {
     Ok(response)
 }
 
-/// Handle status display
+/// Handle status display with theory benefits
 fn handle_status(player: &Player) -> GameResult<String> {
     let mut response = String::new();
     response.push_str(&format!("=== {} ===\n\n", player.name));
@@ -378,13 +430,68 @@ fn handle_status(player: &Player) -> GameResult<String> {
         response.push_str("  None equipped\n");
     }
 
+    // Theory Benefits
+    response.push_str("\nTheory Benefits:\n");
+    let magic_bonus = player.calculate_theory_magic_bonus();
+    let energy_reduction = player.calculate_theory_energy_reduction();
+    let crystal_protection = player.calculate_theory_crystal_protection();
+    let fatigue_resistance = player.calculate_theory_fatigue_resistance();
+
+    if magic_bonus > 0.01 {
+        response.push_str(&format!("  Magic Success Bonus: +{:.1}%\n", magic_bonus * 100.0));
+    }
+    if energy_reduction > 0.01 {
+        response.push_str(&format!("  Energy Cost Reduction: -{:.1}%\n", energy_reduction * 100.0));
+    }
+    if crystal_protection > 0.01 {
+        response.push_str(&format!("  Crystal Protection: -{:.1}% degradation\n", crystal_protection * 100.0));
+    }
+    if fatigue_resistance > 0.01 {
+        response.push_str(&format!("  Fatigue Resistance: -{:.1}%\n", fatigue_resistance * 100.0));
+    }
+
+    if magic_bonus <= 0.01 && energy_reduction <= 0.01 && crystal_protection <= 0.01 && fatigue_resistance <= 0.01 {
+        response.push_str("  None (study theories to gain benefits)\n");
+    }
+
+    // Magic Capabilities
+    response.push_str("\nMagic Capabilities:\n");
+    let mut capabilities = Vec::new();
+    if player.has_magic_capability("healing_spells") {
+        capabilities.push("Healing Spells");
+    }
+    if player.has_magic_capability("detection_spells") {
+        capabilities.push("Detection Spells");
+    }
+    if player.has_magic_capability("long_distance_magic") {
+        capabilities.push("Long-Distance Magic");
+    }
+    if player.has_magic_capability("power_amplification") {
+        capabilities.push("Power Amplification");
+    }
+    if player.has_magic_capability("custom_spell_combinations") {
+        capabilities.push("Custom Spell Combinations");
+    }
+
+    if capabilities.is_empty() {
+        response.push_str("  Basic magic only (learn theories to unlock advanced capabilities)\n");
+    } else {
+        for capability in capabilities {
+            response.push_str(&format!("  {}\n", capability));
+        }
+    }
+
     // Knowledge
     response.push_str("\nKnowledge:\n");
     if player.knowledge.theories.is_empty() {
         response.push_str("  No theories learned\n");
     } else {
+        let mastered_count = player.get_mastered_theories().len();
+        response.push_str(&format!("  Theories Mastered: {}/{}\n", mastered_count, player.knowledge.theories.len()));
+
         for (theory, understanding) in &player.knowledge.theories {
-            response.push_str(&format!("  {} ({:.0}% understanding)\n", theory, understanding * 100.0));
+            let status = if *understanding >= 1.0 { "MASTERED" } else { "learning" };
+            response.push_str(&format!("  {} ({:.0}% - {})\n", theory, understanding * 100.0, status));
         }
     }
 
@@ -481,31 +588,175 @@ fn handle_meditate(player: &mut Player, world: &mut WorldState) -> GameResult<St
     ))
 }
 
-/// Handle study command
-fn handle_study(theory: String, player: &mut Player, _database: &DatabaseManager) -> GameResult<String> {
-    // Basic study implementation
+/// Handle study command with enhanced knowledge system
+fn handle_study(
+    theory: String,
+    player: &mut Player,
+    _database: &DatabaseManager,
+    knowledge_system: &mut KnowledgeSystem,
+    world: &mut WorldState
+) -> GameResult<String> {
     let study_time = 30; // 30 minutes
-    player.playtime_minutes += study_time;
 
-    // Add some understanding to the theory
-    let current_understanding = player.knowledge.theories.get(&theory).copied().unwrap_or(0.0);
-    let progress = 0.1; // 10% progress per study session
-    let new_understanding = (current_understanding + progress).min(1.0);
+    // Check if player can access this theory
+    let accessible_theories = knowledge_system.get_accessible_theories(player)?;
+    let theory_available = accessible_theories.iter().any(|t| t.id == theory);
 
-    player.knowledge.theories.insert(theory.clone(), new_understanding);
+    if !theory_available {
+        // Fallback to simple study for backward compatibility
+        let current_understanding = player.knowledge.theories.get(&theory).copied().unwrap_or(0.0);
+        let progress = 0.1; // 10% progress per study session
+        let new_understanding = (current_understanding + progress).min(1.0);
+        player.knowledge.theories.insert(theory.clone(), new_understanding);
+        player.playtime_minutes += study_time;
 
-    Ok(format!(
-        "You spend {} minutes studying {}.\n\
-         Understanding: {:.0}% -> {:.0}%",
-        study_time, theory,
-        current_understanding * 100.0,
-        new_understanding * 100.0
-    ))
+        return Ok(format!(
+            "You spend {} minutes studying {}.\n\
+             Understanding: {:.0}% -> {:.0}%\n\
+             (Enhanced theory system not available for this topic)",
+            study_time, theory,
+            current_understanding * 100.0,
+            new_understanding * 100.0
+        ));
+    }
+
+    // Check if player can use study method
+    if !player.can_use_learning_method(&theory, &LearningMethod::Study) {
+        return Ok("You cannot use the study method for this theory right now.".to_string());
+    }
+
+    // Start learning session
+    player.start_learning_session(theory.clone(), LearningMethod::Study)?;
+
+    // Attempt learning through the knowledge system
+    match knowledge_system.attempt_learning(&theory, LearningMethod::Study, study_time, player, world) {
+        Ok(activity) => {
+            // Update player progress
+            player.update_theory_progress(&activity)?;
+            player.playtime_minutes += study_time;
+
+            let mut response = format!(
+                "You spend {} minutes studying {}.\n\n",
+                study_time, theory
+            );
+
+            response.push_str(&format!(
+                "Session Results:\n\
+                 - Understanding gained: {:.1}%\n\
+                 - Experience gained: {} XP\n\
+                 - Success rate: {:.0}%\n",
+                activity.understanding_gained * 100.0,
+                activity.experience_gained,
+                activity.success_rate * 100.0
+            ));
+
+            let current_understanding = player.theory_understanding(&theory);
+            response.push_str(&format!(
+                "\nCurrent understanding: {:.0}%",
+                current_understanding * 100.0
+            ));
+
+            // Add mastery message if reached 100%
+            if current_understanding >= 1.0 {
+                response.push_str(&format!(
+                    "\n\nCongratulations! You have mastered {}!",
+                    theory
+                ));
+            }
+
+            // Add side effects
+            if !activity.side_effects.is_empty() {
+                response.push_str("\n\nAdditional notes:\n");
+                for effect in &activity.side_effects {
+                    response.push_str(&format!("- {}\n", effect));
+                }
+            }
+
+            player.end_learning_session();
+            Ok(response)
+        },
+        Err(e) => {
+            player.end_learning_session();
+            Ok(format!("Study session failed: {}", e))
+        }
+    }
 }
 
-/// Handle research command
-fn handle_research(topic: String, _player: &mut Player) -> GameResult<String> {
-    Ok(format!("You begin researching {}. [Research system not yet implemented]", topic))
+/// Handle research command with enhanced knowledge system
+fn handle_research(
+    topic: String,
+    player: &mut Player,
+    knowledge_system: &mut KnowledgeSystem,
+    world: &mut WorldState
+) -> GameResult<String> {
+    let research_time = 120; // 2 hours for research
+
+    // Check if player can access this theory for research
+    let accessible_theories = knowledge_system.get_accessible_theories(player)?;
+    let theory_available = accessible_theories.iter().any(|t| t.id == topic);
+
+    if !theory_available {
+        return Ok(format!(
+            "You cannot research '{}' yet. You may need to learn prerequisite theories first.",
+            topic
+        ));
+    }
+
+    // Check if player can use research method
+    if !player.can_use_learning_method(&topic, &LearningMethod::Research) {
+        return Ok(format!(
+            "You cannot research '{}' yet. Research requires at least 80% understanding and 60+ Mental Acuity.",
+            topic
+        ));
+    }
+
+    // Start research session
+    player.start_learning_session(topic.clone(), LearningMethod::Research)?;
+
+    // Attempt research through the knowledge system
+    match knowledge_system.attempt_learning(&topic, LearningMethod::Research, research_time, player, world) {
+        Ok(activity) => {
+            // Update player progress
+            player.update_theory_progress(&activity)?;
+            player.playtime_minutes += research_time;
+
+            let mut response = format!(
+                "You spend {} hours conducting intensive research on {}.\n\n",
+                research_time / 60, topic
+            );
+
+            response.push_str(&format!(
+                "Research Results:\n\
+                 - New insights gained: {:.1}%\n\
+                 - Research experience: {} XP\n\
+                 - Success rate: {:.0}%\n",
+                activity.understanding_gained * 100.0,
+                activity.experience_gained,
+                activity.success_rate * 100.0
+            ));
+
+            let current_understanding = player.theory_understanding(&topic);
+            response.push_str(&format!(
+                "\nCurrent understanding: {:.0}%",
+                current_understanding * 100.0
+            ));
+
+            // Add discovery messages based on side effects
+            if !activity.side_effects.is_empty() {
+                response.push_str("\n\nResearch Discoveries:\n");
+                for effect in &activity.side_effects {
+                    response.push_str(&format!("- {}\n", effect));
+                }
+            }
+
+            player.end_learning_session();
+            Ok(response)
+        },
+        Err(e) => {
+            player.end_learning_session();
+            Ok(format!("Research session failed: {}", e))
+        }
+    }
 }
 
 /// Handle take command
@@ -598,15 +849,18 @@ pub fn execute_command(
     player: &mut Player,
     world: &mut WorldState,
     database: &DatabaseManager,
+    magic_system: &mut MagicSystem,
+    dialogue_system: &mut DialogueSystem,
+    faction_system: &FactionSystem,
+    knowledge_system: &mut KnowledgeSystem,
 ) -> GameResult<String> {
     let handler = DefaultCommandHandler;
-    handler.execute(command, player, world, database)
+    handler.execute(command, player, world, database, magic_system, dialogue_system, faction_system, knowledge_system)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::world_state::Direction;
 
     #[test]
     fn test_handle_inventory() {

@@ -43,7 +43,7 @@ impl ReputationSystem {
     /// Modify reputation with bounds checking
     pub fn modify_reputation(&mut self, faction: FactionId, change: i32) {
         let current = self.get_reputation(faction);
-        let new_value = (current + change).max(-100).min(100);
+        let new_value = (current + change).clamp(-100, 100);
         self.reputation_scores.insert(faction, new_value);
     }
 
@@ -158,7 +158,7 @@ impl ReputationSystem {
             lowest,
             total_positive: values.iter().filter(|&&v| v > 0).sum(),
             total_negative: values.iter().filter(|&&v| v < 0).sum(),
-            neutral_count: values.iter().filter(|&&v| v >= -20 && v <= 20).count(),
+            neutral_count: values.iter().filter(|&&v| (-20..=20).contains(&v)).count(),
         }
     }
 }

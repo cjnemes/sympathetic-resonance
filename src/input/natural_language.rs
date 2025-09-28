@@ -236,7 +236,7 @@ impl InputTokenizer {
 
                     _ => CommandIntent::Unknown {
                         original_input: tokens.iter()
-                            .map(|t| &t.text)
+                            .map(|t| t.text.as_str())
                             .collect::<Vec<_>>()
                             .join(" ")
                     }
@@ -255,7 +255,7 @@ impl InputTokenizer {
 
                 CommandIntent::Unknown {
                     original_input: tokens.iter()
-                        .map(|t| &t.text)
+                        .map(|t| t.text.as_str())
                         .collect::<Vec<_>>()
                         .join(" ")
                 }
@@ -273,7 +273,7 @@ impl InputTokenizer {
         } else {
             CommandIntent::Unknown {
                 original_input: tokens.iter()
-                    .map(|t| &t.text)
+                    .map(|t| t.text.as_str())
                     .collect::<Vec<_>>()
                     .join(" ")
             }
@@ -284,8 +284,8 @@ impl InputTokenizer {
     fn parse_examination_intent(&self, tokens: &[Token]) -> CommandIntent {
         // Look for object to examine
         let target = tokens.iter()
-            .filter(|t| matches!(t.token_type, TokenType::Object | TokenType::Adjective))
-            .filter(|t| !matches!(t.text.as_str(), "look" | "examine" | "inspect" | "study" | "observe" | "check" | "analyze"))
+            .filter(|t| matches!(t.token_type, TokenType::Object | TokenType::Adjective | TokenType::MagicKeyword))
+            .filter(|t| !matches!(t.text.as_str(), "look" | "examine" | "inspect" | "study" | "observe" | "check" | "analyze" | "using" | "with" | "through" | "via" | "magic" | "spell" | "energy" | "resonance"))
             .map(|t| t.text.clone())
             .collect::<Vec<_>>()
             .join(" ");
@@ -348,21 +348,44 @@ impl InputTokenizer {
             .map(|t| t.text.clone())
             .unwrap_or_else(|| "talk".to_string());
 
-        let target = tokens.iter()
-            .filter(|t| t.token_type == TokenType::Object)
-            .filter(|t| !matches!(t.text.as_str(), "to" | "with"))
-            .map(|t| t.text.clone())
-            .collect::<Vec<_>>()
-            .join(" ");
+        // For ask commands, we need to preserve the "about" structure
+        if action == "ask" {
+            // Reconstruct the original command structure: "person about topic"
+            let mut target_parts = Vec::new();
 
-        CommandIntent::Social { action, target }
+            for token in tokens.iter().skip(1) { // Skip the "ask" verb
+                match token.token_type {
+                    TokenType::Object | TokenType::Adjective | TokenType::MagicKeyword => {
+                        target_parts.push(token.text.clone());
+                    }
+                    TokenType::Preposition if token.text == "about" => {
+                        target_parts.push(token.text.clone());
+                    }
+                    _ => {} // Skip other token types
+                }
+            }
+
+            let target = target_parts.join(" ");
+            CommandIntent::Social { action, target }
+        } else {
+            // For other social commands, just collect objects
+            let target = tokens.iter()
+                .filter(|t| matches!(t.token_type, TokenType::Object | TokenType::Adjective))
+                .filter(|t| !matches!(t.text.as_str(), "to" | "with"))
+                .map(|t| t.text.clone())
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            CommandIntent::Social { action, target }
+        }
     }
 
     /// Parse help command intent
     fn parse_help_intent(&self, tokens: &[Token]) -> CommandIntent {
         let topic = tokens.iter()
             .skip(1) // Skip "help" verb
-            .filter(|t| t.token_type == TokenType::Object)
+            .filter(|t| matches!(t.token_type, TokenType::Object | TokenType::MagicKeyword | TokenType::Verb))
+            .filter(|t| !matches!(t.text.as_str(), "help"))
             .map(|t| t.text.clone())
             .collect::<Vec<_>>()
             .join(" ");

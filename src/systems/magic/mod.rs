@@ -23,8 +23,10 @@ pub struct MagicSystem {
     /// Core calculation engine
     calculation_engine: MagicCalculationEngine,
     /// Resonance analysis system
+    #[allow(dead_code)]
     resonance_analyzer: ResonanceAnalyzer,
     /// Crystal management system
+    #[allow(dead_code)]
     crystal_manager: CrystalManager,
 }
 
@@ -46,12 +48,13 @@ impl MagicSystem {
         world: &mut WorldState,
         target: Option<&str>,
     ) -> GameResult<MagicResult> {
-        // Get active crystal
-        let crystal = caster.active_crystal()
+        // Get active crystal info before any mutable operations
+        let crystal_frequency = caster.active_crystal()
+            .map(|c| c.frequency)
             .ok_or_else(|| crate::GameError::InsufficientResources("No crystal equipped".to_string()))?;
 
         // Create magic attempt
-        let attempt = MagicAttempt::new(spell_type, crystal.frequency, target);
+        let attempt = MagicAttempt::new(spell_type, crystal_frequency, target);
 
         // Calculate result
         let result = self.calculation_engine.calculate_attempt(
@@ -74,7 +77,7 @@ impl MagicSystem {
             world.add_magical_signature(
                 spell_type.to_string(),
                 result.power_level,
-                crystal.frequency,
+                crystal_frequency,
             );
 
             // Advance time

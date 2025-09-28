@@ -15,6 +15,20 @@ pub enum Relationship {
     OpenWar,        // -33% cross-effect
 }
 
+impl Relationship {
+    /// Convert relationship to numeric strength (-1.0 to 1.0)
+    pub fn to_strength(self) -> f32 {
+        match self {
+            Relationship::StrongAllies => 0.25,
+            Relationship::Allies => 0.17,
+            Relationship::Neutral => 0.0,
+            Relationship::Rivals => -0.12,
+            Relationship::Enemies => -0.20,
+            Relationship::OpenWar => -0.33,
+        }
+    }
+}
+
 /// System for managing inter-faction political relationships
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PoliticalSystem {
@@ -176,23 +190,31 @@ impl PoliticalSystem {
 
     /// Update political events based on current time
     pub fn update_events(&mut self, current_time: i32) {
+        // Collect relationship changes to apply after iteration
+        let mut relationship_changes = Vec::new();
+
         for event in &mut self.events {
             if event.active {
                 if let Some(duration) = event.duration {
                     if current_time >= event.start_time + duration {
                         event.active = false;
 
-                        // Reverse temporary effects
+                        // Collect temporary effects to reverse
                         for ((faction1, faction2), effect) in &event.relationship_effects {
                             if effect.temporary {
-                                let current = self.get_relationship(*faction1, *faction2);
-                                let new_relationship = self.shift_relationship(current, -effect.shift);
-                                self.set_relationship(*faction1, *faction2, new_relationship);
+                                relationship_changes.push((*faction1, *faction2, -effect.shift));
                             }
                         }
                     }
                 }
             }
+        }
+
+        // Apply collected relationship changes
+        for (faction1, faction2, shift) in relationship_changes {
+            let current = self.get_relationship(faction1, faction2);
+            let new_relationship = self.shift_relationship(current, shift);
+            self.set_relationship(faction1, faction2, new_relationship);
         }
 
         // Remove expired events
@@ -210,7 +232,7 @@ impl PoliticalSystem {
             Relationship::StrongAllies => 2,
         };
 
-        let new_value = (current_value + shift).max(-3).min(2);
+        let new_value = (current_value + shift).clamp(-3, 2);
 
         match new_value {
             -3 => Relationship::OpenWar,

@@ -68,15 +68,14 @@ struct MagicFormulas {
 
 /// Trait for magic type-specific calculations
 trait MagicCalculator: Send + Sync {
-    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext) -> MagicCalculationResult;
-    fn get_description(&self) -> &str;
+    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext<'_>, formulas: &MagicFormulas) -> MagicCalculationResult;
 }
 
 /// Context for magic calculations
-pub struct MagicContext {
-    pub caster: &Player,
-    pub world: &WorldState,
-    pub crystal: &Crystal,
+pub struct MagicContext<'a> {
+    pub caster: &'a Player,
+    pub world: &'a WorldState,
+    pub crystal: &'a Crystal,
 }
 
 /// Raw calculation result before applying success/failure
@@ -136,7 +135,7 @@ impl MagicCalculationEngine {
             .ok_or_else(|| crate::GameError::InvalidCommand(format!("Unknown magic type: {}", attempt.spell_type)))?;
 
         // Perform calculation
-        let calc_result = calculator.calculate(attempt, &context);
+        let calc_result = calculator.calculate(attempt, &context, &self.formulas);
 
         // Apply base modifiers and roll for success
         let final_result = self.finalize_result(calc_result, &context);
@@ -145,7 +144,7 @@ impl MagicCalculationEngine {
     }
 
     /// Apply final modifiers and determine success
-    fn finalize_result(&self, calc_result: MagicCalculationResult, context: &MagicContext) -> MagicResult {
+    fn finalize_result(&self, calc_result: MagicCalculationResult, _context: &MagicContext<'_>) -> MagicResult {
         // Roll for success using calculated probability
         let roll = rand::random::<f32>();
         let success = roll < calc_result.success_probability;
@@ -236,8 +235,8 @@ impl MagicFormulas {
     }
 }
 
-/// Calculate base success probability using core formula
-fn calculate_base_success(context: &MagicContext, formulas: &MagicFormulas, magic_type: &str) -> (f32, Vec<String>) {
+/// Calculate base success probability using core formula with theory bonuses
+fn calculate_base_success(context: &MagicContext<'_>, formulas: &MagicFormulas, magic_type: &str) -> (f32, Vec<String>) {
     let mut explanation = Vec::new();
 
     // Base success from Resonance Sensitivity
@@ -259,10 +258,15 @@ fn calculate_base_success(context: &MagicContext, formulas: &MagicFormulas, magi
     explanation.push(format!("Frequency matching (crystal {} vs optimal {}): {:+.1}%",
                             context.crystal.frequency, optimal_freq, frequency_modifier));
 
-    // Crystal efficiency
-    let efficiency_bonus = (context.crystal.efficiency() - 0.5) * 40.0; // -20 to +20
+    // Crystal efficiency (enhanced by Crystal Structures theory)
+    let base_efficiency_bonus = (context.crystal.efficiency() - 0.5) * 40.0; // -20 to +20
+    let crystal_theory_bonus = context.caster.calculate_theory_crystal_protection() * 20.0; // Additional bonus from theory
+    let efficiency_bonus = base_efficiency_bonus + crystal_theory_bonus;
     explanation.push(format!("Crystal efficiency {:.0}%: {:+.1}%",
-                            context.crystal.efficiency() * 100.0, efficiency_bonus));
+                            context.crystal.efficiency() * 100.0, base_efficiency_bonus));
+    if crystal_theory_bonus > 0.1 {
+        explanation.push(format!("Crystal theory understanding: {:+.1}%", crystal_theory_bonus));
+    }
 
     // Crystal power multiplier
     let power_bonus = (context.crystal.power_multiplier() - 1.0) * 10.0; // -5 to +3
@@ -290,10 +294,25 @@ fn calculate_base_success(context: &MagicContext, formulas: &MagicFormulas, magi
     let difficulty_penalty = (1.0 - formulas.get_difficulty_multiplier(magic_type)) * 25.0;
     explanation.push(format!("Magic type difficulty: {:+.1}%", difficulty_penalty));
 
+    // THEORY BONUSES - Major enhancement
+
+    // General magic bonus from all theories
+    let general_theory_bonus = context.caster.calculate_theory_magic_bonus() * 100.0; // Convert to percentage
+    if general_theory_bonus > 0.1 {
+        explanation.push(format!("Theory mastery bonus: {:+.1}%", general_theory_bonus));
+    }
+
+    // Spell-specific theory bonuses
+    let spell_specific_bonus = context.caster.calculate_spell_type_bonus(magic_type) * 100.0;
+    if spell_specific_bonus > 0.1 {
+        explanation.push(format!("{} theory specialization: {:+.1}%",
+                               magic_type.to_uppercase(), spell_specific_bonus));
+    }
+
     let total_success = (base_success + frequency_modifier + efficiency_bonus + power_bonus +
-                        energy_modifier + env_modifier + difficulty_penalty)
-                        .max(5.0)  // Minimum 5% chance
-                        .min(95.0); // Maximum 95% chance
+                        energy_modifier + env_modifier + difficulty_penalty +
+                        general_theory_bonus + spell_specific_bonus)
+                        .clamp(5.0, 95.0); // Minimum 5% chance, Maximum 95% chance
 
     explanation.push(format!("\nTotal Success Probability: {:.1}%", total_success));
 
@@ -321,34 +340,52 @@ impl MagicAttempt {
 struct LightMagicCalculator;
 
 impl MagicCalculator for LightMagicCalculator {
-    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext) -> MagicCalculationResult {
-        let formulas = MagicFormulas::new();
-        let (success_probability, mut explanation) = calculate_base_success(context, &formulas, &attempt.spell_type);
+    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext<'_>, formulas: &MagicFormulas) -> MagicCalculationResult {
+        let (success_probability, mut explanation) = calculate_base_success(context, formulas, &attempt.spell_type);
 
         explanation.push("\nLight Magic: Creates illumination through crystal resonance".to_string());
+
+        // Apply theory bonuses to costs and degradation
+        let base_energy_cost = formulas.get_base_energy_cost(&attempt.spell_type);
+        let energy_reduction = context.caster.calculate_theory_energy_reduction();
+        let energy_cost = (base_energy_cost as f32 * (1.0 - energy_reduction)) as i32;
+
+        let base_fatigue_cost = formulas.get_base_fatigue_cost(&attempt.spell_type);
+        let fatigue_resistance = context.caster.calculate_theory_fatigue_resistance();
+        let fatigue_cost = (base_fatigue_cost as f32 * (1.0 - fatigue_resistance)) as i32;
+
+        let base_degradation = 0.5;
+        let crystal_protection = context.caster.calculate_theory_crystal_protection();
+        let crystal_degradation = base_degradation * (1.0 - crystal_protection);
+
+        // Add theory effect explanations
+        if energy_reduction > 0.01 {
+            explanation.push(format!("Energy efficiency from theory mastery: -{:.0}%", energy_reduction * 100.0));
+        }
+        if fatigue_resistance > 0.01 {
+            explanation.push(format!("Fatigue resistance from mental resonance: -{:.0}%", fatigue_resistance * 100.0));
+        }
+        if crystal_protection > 0.01 {
+            explanation.push(format!("Crystal protection from theory understanding: -{:.0}%", crystal_protection * 100.0));
+        }
 
         MagicCalculationResult {
             success_probability,
             power_level: 0.6,
-            energy_cost: formulas.get_base_energy_cost(&attempt.spell_type),
-            fatigue_cost: formulas.get_base_fatigue_cost(&attempt.spell_type),
-            crystal_degradation: 0.5,
+            energy_cost,
+            fatigue_cost,
+            crystal_degradation,
             time_cost: 1,
             explanation_parts: explanation,
         }
-    }
-
-    fn get_description(&self) -> &str {
-        "Creates steady illumination by exciting crystal lattice structures"
     }
 }
 
 struct HealingMagicCalculator;
 
 impl MagicCalculator for HealingMagicCalculator {
-    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext) -> MagicCalculationResult {
-        let formulas = MagicFormulas::new();
-        let (mut success_probability, mut explanation) = calculate_base_success(context, &formulas, &attempt.spell_type);
+    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext<'_>, formulas: &MagicFormulas) -> MagicCalculationResult {
+        let (mut success_probability, mut explanation) = calculate_base_success(context, formulas, &attempt.spell_type);
 
         // Healing requires sympathetic connection
         if attempt.target.is_some() {
@@ -361,94 +398,158 @@ impl MagicCalculator for HealingMagicCalculator {
 
         explanation.push("\nHealing Magic: Accelerates natural healing through bio-resonance".to_string());
 
+        // Apply theory bonuses
+        let base_energy_cost = formulas.get_base_energy_cost(&attempt.spell_type);
+        let energy_reduction = context.caster.calculate_theory_energy_reduction();
+        let energy_cost = (base_energy_cost as f32 * (1.0 - energy_reduction)) as i32;
+
+        let base_fatigue_cost = formulas.get_base_fatigue_cost(&attempt.spell_type);
+        let fatigue_resistance = context.caster.calculate_theory_fatigue_resistance();
+        let fatigue_cost = (base_fatigue_cost as f32 * (1.0 - fatigue_resistance)) as i32;
+
+        let base_degradation = 1.2;
+        let crystal_protection = context.caster.calculate_theory_crystal_protection();
+        let crystal_degradation = base_degradation * (1.0 - crystal_protection);
+
+        // Add theory effect explanations
+        if energy_reduction > 0.01 {
+            explanation.push(format!("Energy efficiency from theory mastery: -{:.0}%", energy_reduction * 100.0));
+        }
+        if fatigue_resistance > 0.01 {
+            explanation.push(format!("Fatigue resistance from mental resonance: -{:.0}%", fatigue_resistance * 100.0));
+        }
+        if crystal_protection > 0.01 {
+            explanation.push(format!("Crystal protection from theory understanding: -{:.0}%", crystal_protection * 100.0));
+        }
+
+        // Check for bio-resonance unlocks
+        if context.caster.has_magic_capability("healing_spells") {
+            explanation.push("Bio-resonance theory unlocks advanced healing techniques".to_string());
+        }
+
         MagicCalculationResult {
-            success_probability: success_probability.max(0.05).min(0.95),
+            success_probability: success_probability.clamp(0.05, 0.95),
             power_level: 0.8,
-            energy_cost: formulas.get_base_energy_cost(&attempt.spell_type),
-            fatigue_cost: formulas.get_base_fatigue_cost(&attempt.spell_type),
-            crystal_degradation: 1.2,
+            energy_cost,
+            fatigue_cost,
+            crystal_degradation,
             time_cost: 3,
             explanation_parts: explanation,
         }
-    }
-
-    fn get_description(&self) -> &str {
-        "Accelerates natural healing by harmonizing with biological energy patterns"
     }
 }
 
 struct DetectionMagicCalculator;
 
 impl MagicCalculator for DetectionMagicCalculator {
-    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext) -> MagicCalculationResult {
-        let formulas = MagicFormulas::new();
-        let (success_probability, mut explanation) = calculate_base_success(context, &formulas, &attempt.spell_type);
+    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext<'_>, formulas: &MagicFormulas) -> MagicCalculationResult {
+        let (success_probability, mut explanation) = calculate_base_success(context, formulas, &attempt.spell_type);
 
         explanation.push("\nDetection Magic: Reveals hidden magical signatures and energies".to_string());
+
+        // Apply theory bonuses
+        let base_energy_cost = formulas.get_base_energy_cost(&attempt.spell_type);
+        let energy_reduction = context.caster.calculate_theory_energy_reduction();
+        let energy_cost = (base_energy_cost as f32 * (1.0 - energy_reduction)) as i32;
+
+        let base_fatigue_cost = formulas.get_base_fatigue_cost(&attempt.spell_type);
+        let fatigue_resistance = context.caster.calculate_theory_fatigue_resistance();
+        let fatigue_cost = (base_fatigue_cost as f32 * (1.0 - fatigue_resistance)) as i32;
+
+        let base_degradation = 0.8;
+        let crystal_protection = context.caster.calculate_theory_crystal_protection();
+        let crystal_degradation = base_degradation * (1.0 - crystal_protection);
+
+        // Check for detection theory unlocks
+        if context.caster.has_magic_capability("detection_spells") {
+            explanation.push("Detection array theory enhances magical perception".to_string());
+        }
 
         MagicCalculationResult {
             success_probability,
             power_level: 0.7,
-            energy_cost: formulas.get_base_energy_cost(&attempt.spell_type),
-            fatigue_cost: formulas.get_base_fatigue_cost(&attempt.spell_type),
-            crystal_degradation: 0.8,
+            energy_cost,
+            fatigue_cost,
+            crystal_degradation,
             time_cost: 2,
             explanation_parts: explanation,
         }
-    }
-
-    fn get_description(&self) -> &str {
-        "Enhances perception to detect magical signatures and hidden energies"
     }
 }
 
 struct ManipulationMagicCalculator;
 
 impl MagicCalculator for ManipulationMagicCalculator {
-    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext) -> MagicCalculationResult {
-        let formulas = MagicFormulas::new();
-        let (success_probability, mut explanation) = calculate_base_success(context, &formulas, &attempt.spell_type);
+    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext<'_>, formulas: &MagicFormulas) -> MagicCalculationResult {
+        let (success_probability, mut explanation) = calculate_base_success(context, formulas, &attempt.spell_type);
 
         explanation.push("\nManipulation Magic: Direct force application through electromagnetic fields".to_string());
+
+        // Apply theory bonuses
+        let base_energy_cost = formulas.get_base_energy_cost(&attempt.spell_type);
+        let energy_reduction = context.caster.calculate_theory_energy_reduction();
+        let energy_cost = (base_energy_cost as f32 * (1.0 - energy_reduction)) as i32;
+
+        let base_fatigue_cost = formulas.get_base_fatigue_cost(&attempt.spell_type);
+        let fatigue_resistance = context.caster.calculate_theory_fatigue_resistance();
+        let fatigue_cost = (base_fatigue_cost as f32 * (1.0 - fatigue_resistance)) as i32;
+
+        let base_degradation = 2.0;
+        let crystal_protection = context.caster.calculate_theory_crystal_protection();
+        let crystal_degradation = base_degradation * (1.0 - crystal_protection);
+
+        // Check for power amplification
+        if context.caster.has_magic_capability("power_amplification") {
+            explanation.push("Resonance amplification theory increases manipulation power".to_string());
+        }
 
         MagicCalculationResult {
             success_probability,
             power_level: 1.0,
-            energy_cost: formulas.get_base_energy_cost(&attempt.spell_type),
-            fatigue_cost: formulas.get_base_fatigue_cost(&attempt.spell_type),
-            crystal_degradation: 2.0,
+            energy_cost,
+            fatigue_cost,
+            crystal_degradation,
             time_cost: 4,
             explanation_parts: explanation,
         }
-    }
-
-    fn get_description(&self) -> &str {
-        "Applies direct physical force through controlled electromagnetic manipulation"
     }
 }
 
 struct CommunicationMagicCalculator;
 
 impl MagicCalculator for CommunicationMagicCalculator {
-    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext) -> MagicCalculationResult {
-        let formulas = MagicFormulas::new();
-        let (success_probability, mut explanation) = calculate_base_success(context, &formulas, &attempt.spell_type);
+    fn calculate(&self, attempt: &MagicAttempt, context: &MagicContext<'_>, formulas: &MagicFormulas) -> MagicCalculationResult {
+        let (success_probability, mut explanation) = calculate_base_success(context, formulas, &attempt.spell_type);
 
         explanation.push("\nCommunication Magic: Establishes resonant links for information transfer".to_string());
+
+        // Apply theory bonuses
+        let base_energy_cost = formulas.get_base_energy_cost(&attempt.spell_type);
+        let energy_reduction = context.caster.calculate_theory_energy_reduction();
+        let energy_cost = (base_energy_cost as f32 * (1.0 - energy_reduction)) as i32;
+
+        let base_fatigue_cost = formulas.get_base_fatigue_cost(&attempt.spell_type);
+        let fatigue_resistance = context.caster.calculate_theory_fatigue_resistance();
+        let fatigue_cost = (base_fatigue_cost as f32 * (1.0 - fatigue_resistance)) as i32;
+
+        let base_degradation = 0.6;
+        let crystal_protection = context.caster.calculate_theory_crystal_protection();
+        let crystal_degradation = base_degradation * (1.0 - crystal_protection);
+
+        // Check for long-distance capabilities
+        if context.caster.has_magic_capability("long_distance_magic") {
+            explanation.push("Sympathetic network theory enables long-distance communication".to_string());
+        }
 
         MagicCalculationResult {
             success_probability,
             power_level: 0.5,
-            energy_cost: formulas.get_base_energy_cost(&attempt.spell_type),
-            fatigue_cost: formulas.get_base_fatigue_cost(&attempt.spell_type),
-            crystal_degradation: 0.6,
+            energy_cost,
+            fatigue_cost,
+            crystal_degradation,
             time_cost: 2,
             explanation_parts: explanation,
         }
-    }
-
-    fn get_description(&self) -> &str {
-        "Creates resonant communication links across distances"
     }
 }
 

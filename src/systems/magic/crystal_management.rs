@@ -40,8 +40,7 @@ impl CrystalManager {
         let size_modifier = (crystal.power_multiplier() - 1.0) * 0.1; // Size affects efficiency
 
         let total_efficiency = (base_efficiency + purity_bonus + size_modifier - integrity_penalty)
-            .max(0.1)
-            .min(1.0);
+            .clamp(0.1, 1.0);
 
         CrystalEfficiency {
             base_efficiency,
@@ -65,7 +64,7 @@ impl CrystalManager {
         let total_degradation = base_degradation * type_modifier * integrity_vulnerability
                               * (1.0 - purity_protection) * (1.0 + overuse_penalty);
 
-        total_degradation.max(0.1).min(10.0) // Reasonable bounds
+        total_degradation.clamp(0.1, 10.0) // Reasonable bounds
     }
 
     /// Check if crystal needs maintenance

@@ -142,7 +142,7 @@ pub fn validate_game_state(state: &GameStateData) -> GameResult<()> {
 
     // Check faction reputation bounds
     for &reputation in state.player.faction_standings.values() {
-        if reputation < -100 || reputation > 100 {
+        if !(-100..=100).contains(&reputation) {
             return Err(crate::GameError::SaveLoadError("Invalid faction reputation".to_string()).into());
         }
     }
@@ -175,7 +175,7 @@ pub fn create_save_summary(state: &GameStateData) -> String {
 }
 
 /// Extract minimal info for save file listing
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaveFileInfo {
     pub save_name: String,
     pub character_name: String,

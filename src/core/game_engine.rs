@@ -1,7 +1,7 @@
 //! Main game engine coordinating all systems
 
 use crate::core::{Player, WorldState, EventBus};
-use crate::systems::{MagicSystem, FactionSystem};
+use crate::systems::{MagicSystem, FactionSystem, DialogueSystem, KnowledgeSystem};
 use crate::input::{CommandParser, execute_command};
 use crate::persistence::{DatabaseManager, SaveManager};
 use crate::GameResult;
@@ -17,6 +17,10 @@ pub struct GameEngine {
     magic_system: MagicSystem,
     /// Faction system
     faction_system: FactionSystem,
+    /// Dialogue system
+    dialogue_system: DialogueSystem,
+    /// Knowledge system
+    knowledge_system: KnowledgeSystem,
     /// Command parser
     command_parser: CommandParser,
     /// Database manager
@@ -24,6 +28,7 @@ pub struct GameEngine {
     /// Save manager
     save_manager: SaveManager,
     /// Event bus
+    #[allow(dead_code)]
     event_bus: EventBus,
     /// Debug mode flag
     debug_mode: bool,
@@ -43,11 +48,17 @@ impl GameEngine {
 
         let save_manager = SaveManager::new()?;
 
+        // Initialize knowledge system
+        let mut knowledge_system = KnowledgeSystem::new();
+        knowledge_system.initialize(&database)?;
+
         Ok(Self {
             player,
             world,
             magic_system: MagicSystem::new(),
             faction_system: FactionSystem::new(),
+            dialogue_system: DialogueSystem::new(),
+            knowledge_system,
             command_parser: CommandParser::new(),
             database,
             save_manager,
@@ -101,7 +112,7 @@ impl GameEngine {
 
         match parse_result {
             crate::input::CommandResult::Success(command) => {
-                execute_command(command, &mut self.player, &mut self.world, &self.database)
+                execute_command(command, &mut self.player, &mut self.world, &self.database, &mut self.magic_system, &mut self.dialogue_system, &self.faction_system, &mut self.knowledge_system)
             }
             crate::input::CommandResult::Error(msg) => {
                 Ok(msg)

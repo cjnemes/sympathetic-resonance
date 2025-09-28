@@ -18,6 +18,12 @@ pub mod content;
 pub mod persistence;
 pub mod ui;
 
+#[cfg(test)]
+pub mod integration_tests;
+
+#[cfg(test)]
+pub mod performance_tests;
+
 // Re-export commonly used types
 pub use core::{
     game_engine::GameEngine,
@@ -30,6 +36,8 @@ pub use systems::{
     factions::FactionSystem,
     knowledge::KnowledgeSystem,
 };
+
+pub use persistence::database::DatabaseManager;
 
 /// Game version information
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -58,6 +66,9 @@ pub enum GameError {
 
     #[error("Database error: {0}")]
     DatabaseError(String),
+
+    #[error("IO error: {0}")]
+    IoError(String),
 }
 
 #[cfg(test)]
