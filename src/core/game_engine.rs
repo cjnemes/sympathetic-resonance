@@ -163,9 +163,10 @@ impl GameEngine {
 
     /// Load a save file
     pub fn load_save(&mut self, save_path: &str) -> GameResult<()> {
-        let (player, world) = self.save_manager.load_game(save_path)?;
+        let (player, world, quest_system) = self.save_manager.load_game(save_path)?;
         self.player = player;
         self.world = world;
+        self.quest_system = quest_system;
         Ok(())
     }
 

@@ -566,4 +566,56 @@ mod tests {
             _ => panic!("Expected successful ask command"),
         }
     }
+
+    #[test]
+    fn test_quest_list_parsing() {
+        let parser = CommandParser::new();
+        let result = parser.parse("quest list");
+
+        match result {
+            CommandResult::Success(ParsedCommand::QuestList) => {
+                // Success
+            }
+            other => panic!("Expected successful quest list command, got: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_quests_parsing() {
+        let parser = CommandParser::new();
+        let result = parser.parse("quests");
+
+        match result {
+            CommandResult::Success(ParsedCommand::QuestList) => {
+                // Success
+            }
+            other => panic!("Expected successful quests command, got: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_quest_start_parsing() {
+        let parser = CommandParser::new();
+        let result = parser.parse("quest start resonance_foundation");
+
+        match result {
+            CommandResult::Success(ParsedCommand::QuestStart { quest_id }) => {
+                assert_eq!(quest_id, "resonance_foundation");
+            }
+            other => panic!("Expected successful quest start command, got: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_quest_parsing_via_parse_advanced() {
+        let parser = CommandParser::new();
+        let result = parser.parse_advanced("quest list");
+
+        match result {
+            CommandResult::Success(ParsedCommand::QuestList) => {
+                // Success
+            }
+            other => panic!("Expected successful quest list via parse_advanced, got: {:?}", other),
+        }
+    }
 }
