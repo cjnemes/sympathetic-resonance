@@ -84,7 +84,7 @@ impl InputTokenizer {
         self.add_pattern(r"\b(talk|speak|ask|tell|say|greet|converse)\b", TokenType::Verb);
 
         // System verbs
-        self.add_pattern(r"\b(save|load|quit|exit|help|status|inventory)\b", TokenType::Verb);
+        self.add_pattern(r"\b(save|load|quit|exit|help|status|inventory|quest|quests)\b", TokenType::Verb);
 
         // Directions
         self.add_pattern(r"\b(north|south|east|west|northeast|northwest|southeast|southwest|up|down|in|out|n|s|e|w|ne|nw|se|sw|u|d)\b", TokenType::Direction);
@@ -226,8 +226,8 @@ impl InputTokenizer {
                     }
 
                     // System commands
-                    "save" | "load" | "quit" | "exit" | "status" => {
-                        CommandIntent::System { command: verb.text.clone() }
+                    "save" | "load" | "quit" | "exit" | "status" | "quest" | "quests" => {
+                        CommandIntent::System { command: self.build_system_command(tokens) }
                     }
 
                     "help" => {
@@ -394,6 +394,15 @@ impl InputTokenizer {
 
         CommandIntent::Help { topic }
     }
+
+    /// Build system command string from tokens
+    fn build_system_command(&self, tokens: &[Token]) -> String {
+        tokens.iter()
+            .filter(|t| !matches!(t.token_type, TokenType::Article | TokenType::Preposition))
+            .map(|t| t.text.clone())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
 }
 
 #[cfg(test)]
@@ -480,6 +489,48 @@ mod tests {
                 assert_eq!(target, Some("crystal".to_string()));
             }
             _ => panic!("Expected examination intent"),
+        }
+    }
+
+    #[test]
+    fn test_quest_list_intent() {
+        let tokenizer = InputTokenizer::new();
+        let tokens = tokenizer.tokenize("quest list");
+        let intent = tokenizer.recognize_intent(&tokens);
+
+        match intent {
+            CommandIntent::System { command } => {
+                assert_eq!(command, "quest list");
+            }
+            _ => panic!("Expected system intent for quest list, got: {:?}", intent),
+        }
+    }
+
+    #[test]
+    fn test_quests_command_intent() {
+        let tokenizer = InputTokenizer::new();
+        let tokens = tokenizer.tokenize("quests");
+        let intent = tokenizer.recognize_intent(&tokens);
+
+        match intent {
+            CommandIntent::System { command } => {
+                assert_eq!(command, "quests");
+            }
+            _ => panic!("Expected system intent for quests command, got: {:?}", intent),
+        }
+    }
+
+    #[test]
+    fn test_quest_start_intent() {
+        let tokenizer = InputTokenizer::new();
+        let tokens = tokenizer.tokenize("quest start resonance_foundation");
+        let intent = tokenizer.recognize_intent(&tokens);
+
+        match intent {
+            CommandIntent::System { command } => {
+                assert_eq!(command, "quest start resonance_foundation");
+            }
+            _ => panic!("Expected system intent for quest start, got: {:?}", intent),
         }
     }
 }
