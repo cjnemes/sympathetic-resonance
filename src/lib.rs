@@ -52,6 +52,9 @@ pub enum GameError {
     #[error("Invalid command: {0}")]
     InvalidCommand(String),
 
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+
     #[error("Insufficient resources: {0}")]
     InsufficientResources(String),
 

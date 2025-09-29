@@ -51,6 +51,21 @@ pub enum CommandIntent {
     },
     Social { action: String, target: String },
     Inventory { action: String },
+    Item {
+        action: String,
+        target: Option<String>,
+        destination: Option<String>,
+    },
+    Equipment {
+        action: String,
+        item: Option<String>,
+        slot: Option<String>,
+    },
+    Crafting {
+        action: String,
+        items: Vec<String>,
+        recipe: Option<String>,
+    },
     System { command: String },
     Help { topic: Option<String> },
     Unknown { original_input: String },
@@ -85,6 +100,12 @@ impl InputTokenizer {
 
         // System verbs
         self.add_pattern(r"\b(save|load|quit|exit|help|status|inventory|quest|quests)\b", TokenType::Verb);
+
+        // Item interaction verbs
+        self.add_pattern(r"\b(get|take|pick|grab|drop|give|put|place|hold|carry)\b", TokenType::Verb);
+        self.add_pattern(r"\b(equip|wear|wield|remove|unequip|don|doff)\b", TokenType::Verb);
+        self.add_pattern(r"\b(combine|craft|create|make|synthesize|enhance|repair)\b", TokenType::Verb);
+        self.add_pattern(r"\b(drink|eat|consume|apply|activate|trigger)\b", TokenType::Verb);
 
         // Directions
         self.add_pattern(r"\b(north|south|east|west|northeast|northwest|southeast|southwest|up|down|in|out|n|s|e|w|ne|nw|se|sw|u|d)\b", TokenType::Direction);
@@ -211,7 +232,7 @@ impl InputTokenizer {
                     }
 
                     // Magic commands
-                    "cast" | "channel" | "focus" | "resonate" | "attune" | "use" => {
+                    "cast" | "channel" | "focus" | "resonate" | "attune" => {
                         self.parse_magic_intent(tokens)
                     }
 
@@ -223,6 +244,47 @@ impl InputTokenizer {
                     // Inventory commands
                     "inventory" => {
                         CommandIntent::Inventory { action: "show".to_string() }
+                    }
+
+                    // Item interaction commands
+                    "get" | "take" | "pick" | "grab" => {
+                        self.parse_item_intent(tokens, "take")
+                    }
+
+                    "drop" | "put" | "place" => {
+                        self.parse_item_intent(tokens, "drop")
+                    }
+
+                    "give" => {
+                        self.parse_item_intent(tokens, "give")
+                    }
+
+                    "use" => {
+                        // Handle both magic use and item use
+                        if self.has_magic_context(tokens) {
+                            self.parse_magic_intent(tokens)
+                        } else {
+                            self.parse_item_intent(tokens, "use")
+                        }
+                    }
+
+                    // Equipment commands
+                    "equip" | "wear" | "wield" | "don" => {
+                        self.parse_equipment_intent(tokens, "equip")
+                    }
+
+                    "remove" | "unequip" | "doff" => {
+                        self.parse_equipment_intent(tokens, "unequip")
+                    }
+
+                    // Crafting commands
+                    "combine" | "craft" | "create" | "make" | "synthesize" | "enhance" | "repair" => {
+                        self.parse_crafting_intent(tokens)
+                    }
+
+                    // Consumable item commands
+                    "drink" | "eat" | "consume" | "apply" | "activate" | "trigger" => {
+                        self.parse_item_intent(tokens, "consume")
                     }
 
                     // System commands
@@ -403,6 +465,147 @@ impl InputTokenizer {
             .collect::<Vec<_>>()
             .join(" ")
     }
+
+    /// Parse item interaction intent
+    fn parse_item_intent(&self, tokens: &[Token], action: &str) -> CommandIntent {
+        let target = self.extract_target_objects(tokens);
+        let destination = self.extract_destination(tokens);
+
+        CommandIntent::Item {
+            action: action.to_string(),
+            target,
+            destination,
+        }
+    }
+
+    /// Parse equipment intent
+    fn parse_equipment_intent(&self, tokens: &[Token], action: &str) -> CommandIntent {
+        let item = self.extract_target_objects(tokens);
+        let slot = self.extract_equipment_slot(tokens);
+
+        CommandIntent::Equipment {
+            action: action.to_string(),
+            item,
+            slot,
+        }
+    }
+
+    /// Parse crafting intent
+    fn parse_crafting_intent(&self, tokens: &[Token]) -> CommandIntent {
+        let action = tokens.iter()
+            .find(|t| t.token_type == TokenType::Verb)
+            .map(|t| t.text.clone())
+            .unwrap_or_else(|| "craft".to_string());
+
+        let items = self.extract_multiple_objects(tokens);
+        let recipe = self.extract_recipe_name(tokens);
+
+        CommandIntent::Crafting {
+            action,
+            items,
+            recipe,
+        }
+    }
+
+    /// Check if tokens contain magic context
+    fn has_magic_context(&self, tokens: &[Token]) -> bool {
+        tokens.iter().any(|t| {
+            matches!(t.token_type, TokenType::MagicKeyword) ||
+            matches!(t.text.as_str(), "spell" | "magic" | "crystal" | "resonance" | "energy")
+        })
+    }
+
+    /// Extract target objects from tokens
+    fn extract_target_objects(&self, tokens: &[Token]) -> Option<String> {
+        let mut objects = Vec::new();
+
+        for token in tokens {
+            // Stop collecting when we hit a positional preposition
+            if matches!(token.token_type, TokenType::Preposition) &&
+               matches!(token.text.as_str(), "in" | "on" | "to" | "into" | "onto") {
+                break;
+            }
+
+            if matches!(token.token_type, TokenType::Object | TokenType::Adjective) &&
+               !matches!(token.text.as_str(), "to" | "at" | "on" | "in" | "with") {
+                objects.push(token.text.clone());
+            }
+        }
+
+        if objects.is_empty() {
+            None
+        } else {
+            Some(objects.join(" "))
+        }
+    }
+
+    /// Extract multiple objects for crafting
+    fn extract_multiple_objects(&self, tokens: &[Token]) -> Vec<String> {
+        tokens.iter()
+            .filter(|t| matches!(t.token_type, TokenType::Object | TokenType::Adjective))
+            .filter(|t| !matches!(t.text.as_str(), "to" | "at" | "on" | "in" | "with" | "and"))
+            .map(|t| t.text.clone())
+            .collect()
+    }
+
+    /// Extract destination for item placement
+    fn extract_destination(&self, tokens: &[Token]) -> Option<String> {
+        // Look for patterns like "put X in Y" or "drop X on Y"
+        let mut found_preposition = false;
+        let mut destination_parts = Vec::new();
+
+        for token in tokens {
+            if matches!(token.token_type, TokenType::Preposition) &&
+               matches!(token.text.as_str(), "in" | "on" | "to" | "into" | "onto") {
+                found_preposition = true;
+                continue;
+            }
+
+            if found_preposition && matches!(token.token_type, TokenType::Object | TokenType::Adjective) {
+                destination_parts.push(token.text.clone());
+            }
+        }
+
+        if destination_parts.is_empty() {
+            None
+        } else {
+            Some(destination_parts.join(" "))
+        }
+    }
+
+    /// Extract equipment slot from tokens
+    fn extract_equipment_slot(&self, tokens: &[Token]) -> Option<String> {
+        // Look for slot-related keywords
+        for token in tokens {
+            match token.text.as_str() {
+                "head" | "helmet" | "hat" => return Some("head".to_string()),
+                "chest" | "armor" | "robe" | "shirt" => return Some("chest".to_string()),
+                "hands" | "gloves" | "gauntlets" => return Some("hands".to_string()),
+                "ring" | "finger" => return Some("ring".to_string()),
+                "feet" | "boots" | "shoes" => return Some("feet".to_string()),
+                "neck" | "amulet" | "necklace" => return Some("neck".to_string()),
+                "waist" | "belt" => return Some("waist".to_string()),
+                "back" | "cloak" | "cape" => return Some("back".to_string()),
+                "weapon" | "sword" | "wand" | "tool" => return Some("main_hand".to_string()),
+                "shield" | "offhand" => return Some("off_hand".to_string()),
+                _ => {}
+            }
+        }
+        None
+    }
+
+    /// Extract recipe name for crafting
+    fn extract_recipe_name(&self, tokens: &[Token]) -> Option<String> {
+        // Look for patterns like "craft potion recipe" or "make sword blueprint"
+        let recipe_indicators = ["recipe", "blueprint", "formula", "pattern"];
+
+        for (i, token) in tokens.iter().enumerate() {
+            if recipe_indicators.contains(&token.text.as_str()) && i > 0 {
+                return Some(tokens[i-1].text.clone());
+            }
+        }
+        None
+    }
 }
 
 #[cfg(test)]
@@ -531,6 +734,94 @@ mod tests {
                 assert_eq!(command, "quest start resonance_foundation");
             }
             _ => panic!("Expected system intent for quest start, got: {:?}", intent),
+        }
+    }
+
+    #[test]
+    fn test_item_take_intent() {
+        let tokenizer = InputTokenizer::new();
+        let tokens = tokenizer.tokenize("take the crystal sword");
+        let intent = tokenizer.recognize_intent(&tokens);
+
+        match intent {
+            CommandIntent::Item { action, target, destination } => {
+                assert_eq!(action, "take");
+                assert_eq!(target, Some("sword".to_string())); // "crystal" gets filtered as adjective
+                assert_eq!(destination, None);
+            }
+            _ => panic!("Expected item intent, got: {:?}", intent),
+        }
+    }
+
+    #[test]
+    fn test_equipment_intent() {
+        let tokenizer = InputTokenizer::new();
+        let tokens = tokenizer.tokenize("equip the resonance amplifier");
+        let intent = tokenizer.recognize_intent(&tokens);
+
+        match intent {
+            CommandIntent::Equipment { action, item, slot } => {
+                assert_eq!(action, "equip");
+                assert_eq!(item, Some("amplifier".to_string())); // "resonance" gets filtered as adjective
+                assert_eq!(slot, None);
+            }
+            _ => panic!("Expected equipment intent, got: {:?}", intent),
+        }
+    }
+
+    #[test]
+    fn test_crafting_intent() {
+        let tokenizer = InputTokenizer::new();
+        let tokens = tokenizer.tokenize("combine crystal dust with pure water");
+        let intent = tokenizer.recognize_intent(&tokens);
+
+        match intent {
+            CommandIntent::Crafting { action, items, recipe } => {
+                assert_eq!(action, "combine");
+                assert!(items.contains(&"dust".to_string()));
+                assert!(items.contains(&"water".to_string()));
+                assert_eq!(recipe, None);
+            }
+            _ => panic!("Expected crafting intent, got: {:?}", intent),
+        }
+    }
+
+    #[test]
+    fn test_item_placement_intent() {
+        let tokenizer = InputTokenizer::new();
+        let tokens = tokenizer.tokenize("put the book on the table");
+        let intent = tokenizer.recognize_intent(&tokens);
+
+        match intent {
+            CommandIntent::Item { action, target, destination } => {
+                assert_eq!(action, "drop");
+                assert_eq!(target, Some("book".to_string())); // Just the book, before the preposition
+                assert_eq!(destination, Some("table".to_string())); // Table after "on"
+            }
+            _ => panic!("Expected item intent with destination, got: {:?}", intent),
+        }
+    }
+
+    #[test]
+    fn test_use_disambiguation() {
+        let tokenizer = InputTokenizer::new();
+
+        // Magic use context
+        let magic_tokens = tokenizer.tokenize("use crystal to cast spell");
+        let magic_intent = tokenizer.recognize_intent(&magic_tokens);
+        match magic_intent {
+            CommandIntent::Magic { .. } => {},
+            _ => panic!("Expected magic intent for crystal use"),
+        }
+
+        // Item use context
+        let item_tokens = tokenizer.tokenize("use the healing potion");
+        let item_intent = tokenizer.recognize_intent(&item_tokens);
+        match item_intent {
+            CommandIntent::Item { action, .. } => {
+                assert_eq!(action, "use");
+            },
+            _ => panic!("Expected item intent for potion use"),
         }
     }
 }

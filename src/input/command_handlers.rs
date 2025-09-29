@@ -152,6 +152,47 @@ impl CommandHandler for DefaultCommandHandler {
                 Ok("QUIT_GAME".to_string()) // Special return value for game loop
             }
 
+            // Item system commands (basic implementations)
+            ParsedCommand::UseItem { item, target } => {
+                match player.use_enhanced_item(&item, target.as_deref()) {
+                    Ok(result) => Ok(result),
+                    Err(_) => Ok(format!("Could not use item: {}", item))
+                }
+            }
+
+            ParsedCommand::UnequipItem { slot } => {
+                if let Some(slot_name) = slot {
+                    Ok(format!("Unequip from {} slot not yet implemented.", slot_name))
+                } else {
+                    Ok("Unequip functionality not yet implemented.".to_string())
+                }
+            }
+
+            ParsedCommand::CraftItem { action, items, recipe } => {
+                let items_str = items.join(", ");
+                let recipe_str = recipe.as_deref().unwrap_or("none");
+                Ok(format!("Crafting: {} with items [{}] using recipe '{}' - not yet implemented.",
+                    action, items_str, recipe_str))
+            }
+
+            ParsedCommand::ExamineItem { item } => {
+                if let Some(ref item_system) = player.inventory.enhanced_items {
+                    // Try to find item by name and examine it
+                    let search_results = item_system.inventory_manager.search_by_name(&item);
+                    if let Some(found_item) = search_results.first() {
+                        item_system.examine_item(&found_item.id)
+                    } else {
+                        Ok(format!("Could not find item: {}", item))
+                    }
+                } else {
+                    Ok(format!("Cannot examine {} - item system not available.", item))
+                }
+            }
+
+            ParsedCommand::GiveItem { item, target } => {
+                Ok(format!("Give {} to {} - not yet implemented.", item, target))
+            }
+
             ParsedCommand::Unknown { original, suggestions } => {
                 handle_unknown_command(original, suggestions)
             }
