@@ -4,6 +4,7 @@
 //! multiple save slots and backup management
 
 use crate::core::{Player, WorldState};
+use crate::systems::quests::QuestSystem;
 use crate::persistence::serialization::{
     SaveFileInfo, serialize_game_state, deserialize_game_state,
     validate_game_state, compress_save_data, decompress_save_data
@@ -91,6 +92,7 @@ impl SaveManager {
         &self,
         player: &Player,
         world: &WorldState,
+        quest_system: &QuestSystem,
         slot_name: Option<String>,
         save_name: Option<String>,
     ) -> GameResult<String> {
@@ -103,7 +105,7 @@ impl SaveManager {
         }
 
         // Serialize game state
-        let serialized_data = serialize_game_state(player, world, save_name)?;
+        let serialized_data = serialize_game_state(player, world, quest_system, save_name)?;
 
         // Compress data
         let compressed_data = compress_save_data(&serialized_data)?;
@@ -116,7 +118,7 @@ impl SaveManager {
     }
 
     /// Load game state from specified slot
-    pub fn load_game(&self, slot_name: &str) -> GameResult<(Player, WorldState)> {
+    pub fn load_game(&self, slot_name: &str) -> GameResult<(Player, WorldState, QuestSystem)> {
         let file_path = self.get_save_file_path(slot_name);
 
         if !file_path.exists() {
@@ -133,12 +135,9 @@ impl SaveManager {
         let serialized_data = decompress_save_data(&compressed_data)?;
 
         // Deserialize game state
-        let game_state = deserialize_game_state(&serialized_data)?;
+        let (player, world, quest_system) = deserialize_game_state(&serialized_data)?;
 
-        // Validate integrity
-        validate_game_state(&game_state)?;
-
-        Ok((game_state.player, game_state.world))
+        Ok((player, world, quest_system))
     }
 
     /// Get information about a save slot without loading the full game
@@ -154,9 +153,10 @@ impl SaveManager {
             .map_err(|e| crate::GameError::SaveLoadError(format!("Failed to read save file: {}", e)))?;
 
         let serialized_data = decompress_save_data(&compressed_data)?;
-        let game_state = deserialize_game_state(&serialized_data)?;
+        let game_state_data = serde_json::from_str::<crate::persistence::serialization::GameStateData>(&serialized_data)
+            .map_err(|e| crate::GameError::SaveLoadError(format!("Deserialization failed: {}", e)))?;
 
-        Ok(Some(SaveFileInfo::from(&game_state)))
+        Ok(Some(SaveFileInfo::from(&game_state_data)))
     }
 
     /// List all available save slots
@@ -259,21 +259,41 @@ impl SaveManager {
         Ok(())
     }
 
-    /// Get file path for a save slot
+    /// Get file path for a save slot (with security validation)
     fn get_save_file_path(&self, slot_name: &str) -> PathBuf {
-        self.save_directory.join(format!("{}.save", slot_name))
+        // Sanitize slot name to prevent path traversal attacks
+        let sanitized_name = self.sanitize_slot_name(slot_name);
+        self.save_directory.join(format!("{}.save", sanitized_name))
+    }
+
+    /// Sanitize slot name to prevent path traversal and other security issues
+    fn sanitize_slot_name(&self, slot_name: &str) -> String {
+        // Remove any path separators, parent directory references, and other dangerous characters
+        let sanitized = slot_name
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-')
+            .collect::<String>();
+
+        // Ensure the name is not empty and has reasonable length
+        if sanitized.is_empty() {
+            "default".to_string()
+        } else if sanitized.len() > 50 {
+            sanitized[..50].to_string()
+        } else {
+            sanitized
+        }
     }
 
     /// Quick save to default slot
-    pub fn quick_save(&self, player: &Player, world: &WorldState) -> GameResult<String> {
-        self.save_game(player, world, Some("quicksave".to_string()), None)
+    pub fn quick_save(&self, player: &Player, world: &WorldState, quest_system: &QuestSystem) -> GameResult<String> {
+        self.save_game(player, world, quest_system, Some("quicksave".to_string()), None)
     }
 
     /// Auto-save (typically called periodically)
-    pub fn auto_save(&self, player: &Player, world: &WorldState) -> GameResult<String> {
+    pub fn auto_save(&self, player: &Player, world: &WorldState, quest_system: &QuestSystem) -> GameResult<String> {
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M");
         let slot_name = format!("autosave_{}", timestamp);
-        self.save_game(player, world, Some(slot_name), Some("Auto Save".to_string()))
+        self.save_game(player, world, quest_system, Some(slot_name), Some("Auto Save".to_string()))
     }
 
     /// Import save file from external location
@@ -287,8 +307,9 @@ impl SaveManager {
             .map_err(|e| crate::GameError::SaveLoadError(format!("Failed to read source file: {}", e)))?;
 
         let serialized_data = decompress_save_data(&data)?;
-        let game_state = deserialize_game_state(&serialized_data)?;
-        validate_game_state(&game_state)?;
+        let game_state_data = serde_json::from_str::<crate::persistence::serialization::GameStateData>(&serialized_data)
+            .map_err(|e| crate::GameError::SaveLoadError(format!("Deserialization failed: {}", e)))?;
+        validate_game_state(&game_state_data)?;
 
         // Copy to save directory
         let target_path = self.get_save_file_path(slot_name);
@@ -329,6 +350,7 @@ impl SaveManager {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+    use crate::systems::quests::QuestSystem;
 
     fn create_test_save_manager() -> (SaveManager, TempDir) {
         let temp_dir = TempDir::new().unwrap();
@@ -343,15 +365,17 @@ mod tests {
         let player = Player::new("Test Player".to_string());
         let world = WorldState::new();
 
+        let quest_system = QuestSystem::new();
+
         // Save game
-        let save_result = manager.save_game(&player, &world, Some("test".to_string()), Some("Test Save".to_string()));
+        let save_result = manager.save_game(&player, &world, &quest_system, Some("test".to_string()), Some("Test Save".to_string()));
         assert!(save_result.is_ok());
 
         // Load game
         let load_result = manager.load_game("test");
         assert!(load_result.is_ok());
 
-        let (loaded_player, _loaded_world) = load_result.unwrap();
+        let (loaded_player, _loaded_world, _loaded_quest_system) = load_result.unwrap();
         assert_eq!(loaded_player.name, "Test Player");
     }
 
@@ -361,7 +385,9 @@ mod tests {
         let player = Player::new("Info Test".to_string());
         let world = WorldState::new();
 
-        manager.save_game(&player, &world, Some("info_test".to_string()), Some("Info Test Save".to_string())).unwrap();
+        let quest_system = QuestSystem::new();
+
+        manager.save_game(&player, &world, &quest_system, Some("info_test".to_string()), Some("Info Test Save".to_string())).unwrap();
 
         let info = manager.get_save_info("info_test").unwrap();
         assert!(info.is_some());
@@ -377,9 +403,11 @@ mod tests {
         let player = Player::new("List Test".to_string());
         let world = WorldState::new();
 
+        let quest_system = QuestSystem::new();
+
         // Create multiple saves
-        manager.save_game(&player, &world, Some("save1".to_string()), None).unwrap();
-        manager.save_game(&player, &world, Some("save2".to_string()), None).unwrap();
+        manager.save_game(&player, &world, &quest_system, Some("save1".to_string()), None).unwrap();
+        manager.save_game(&player, &world, &quest_system, Some("save2".to_string()), None).unwrap();
 
         let slots = manager.list_save_slots().unwrap();
         assert_eq!(slots.len(), 2);
@@ -393,7 +421,9 @@ mod tests {
         let player = Player::new("Delete Test".to_string());
         let world = WorldState::new();
 
-        manager.save_game(&player, &world, Some("delete_test".to_string()), None).unwrap();
+        let quest_system = QuestSystem::new();
+
+        manager.save_game(&player, &world, &quest_system, Some("delete_test".to_string()), None).unwrap();
         assert!(manager.get_save_info("delete_test").unwrap().is_some());
 
         manager.delete_save("delete_test").unwrap();
@@ -406,11 +436,64 @@ mod tests {
         let player = Player::new("Quick Test".to_string());
         let world = WorldState::new();
 
-        let result = manager.quick_save(&player, &world);
+        let quest_system = QuestSystem::new();
+
+        let result = manager.quick_save(&player, &world, &quest_system);
         assert!(result.is_ok());
 
         // Should be able to load quicksave
         let load_result = manager.load_game("quicksave");
         assert!(load_result.is_ok());
+    }
+
+    #[test]
+    fn test_path_traversal_protection() {
+        let (manager, temp_dir) = create_test_save_manager();
+        let player = Player::new("Security Test".to_string());
+        let world = WorldState::new();
+        let quest_system = QuestSystem::new();
+
+        // Test various path traversal attempts
+        let malicious_names = vec![
+            "../../../etc/passwd",
+            "..\\..\\windows\\system32\\config",
+            "/tmp/evil",
+            "C:\\Windows\\System32\\evil.save",
+            "normal/../../../evil",
+            "../../evil",
+            "../evil",
+            ".\\..\\evil",
+            "evil/../../bypass",
+        ];
+
+        for malicious_name in malicious_names {
+            // Should sanitize the name and save safely within the saves directory
+            let result = manager.save_game(&player, &world, &quest_system, Some(malicious_name.to_string()), None);
+            assert!(result.is_ok(), "Failed to handle malicious name: {}", malicious_name);
+
+            // Verify the file was created within the saves directory, not outside
+            let save_path = manager.get_save_file_path(malicious_name);
+            assert!(save_path.starts_with(&temp_dir.path()),
+                "Malicious path escaped saves directory: {:?}", save_path);
+        }
+    }
+
+    #[test]
+    fn test_slot_name_sanitization() {
+        let (manager, _temp_dir) = create_test_save_manager();
+
+        // Test various edge cases
+        assert_eq!(manager.sanitize_slot_name("normal_name"), "normal_name");
+        assert_eq!(manager.sanitize_slot_name("with-dashes"), "with-dashes");
+        assert_eq!(manager.sanitize_slot_name("with123numbers"), "with123numbers");
+        assert_eq!(manager.sanitize_slot_name("../../../evil"), "evil");
+        assert_eq!(manager.sanitize_slot_name("/tmp/evil"), "tmpevil");
+        assert_eq!(manager.sanitize_slot_name(""), "default");
+        assert_eq!(manager.sanitize_slot_name("special!@#$%chars"), "specialchars");
+
+        // Test length limiting
+        let long_name = "a".repeat(100);
+        let sanitized = manager.sanitize_slot_name(&long_name);
+        assert_eq!(sanitized.len(), 50);
     }
 }

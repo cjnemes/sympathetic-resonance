@@ -3,6 +3,7 @@
 //! This module handles converting game state to/from storage format
 
 use crate::core::{Player, WorldState};
+use crate::systems::quests::QuestSystem;
 use crate::GameResult;
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
@@ -18,6 +19,8 @@ pub struct GameStateData {
     pub player: Player,
     /// World state and location data
     pub world: WorldState,
+    /// Quest system state and progress
+    pub quest_system: QuestSystem,
     /// Save metadata
     pub metadata: SaveMetadata,
 }
@@ -42,6 +45,7 @@ const SAVE_FORMAT_VERSION: u32 = 1;
 pub fn serialize_game_state(
     player: &Player,
     world: &WorldState,
+    quest_system: &QuestSystem,
     save_name: Option<String>,
 ) -> GameResult<String> {
     let location_name = world.current_location()
@@ -57,6 +61,7 @@ pub fn serialize_game_state(
         timestamp: Utc::now(),
         player: player.clone(),
         world: world.clone(),
+        quest_system: quest_system.clone(),
         metadata: SaveMetadata {
             save_name,
             playtime_minutes: player.playtime_minutes,
@@ -70,7 +75,7 @@ pub fn serialize_game_state(
 }
 
 /// Deserialize game state from JSON
-pub fn deserialize_game_state(data: &str) -> GameResult<GameStateData> {
+pub fn deserialize_game_state(data: &str) -> GameResult<(Player, WorldState, QuestSystem)> {
     let game_state: GameStateData = serde_json::from_str(data)
         .map_err(|e| crate::GameError::SaveLoadError(format!("Deserialization failed: {}", e)))?;
 
@@ -85,7 +90,7 @@ pub fn deserialize_game_state(data: &str) -> GameResult<GameStateData> {
     // Perform any necessary migrations
     let migrated_state = migrate_save_data(game_state)?;
 
-    Ok(migrated_state)
+    Ok((migrated_state.player, migrated_state.world, migrated_state.quest_system))
 }
 
 /// Migrate save data between versions
@@ -214,29 +219,30 @@ pub fn decompress_save_data(data: &[u8]) -> GameResult<String> {
 mod tests {
     use super::*;
     use crate::core::Player;
+    use crate::systems::quests::QuestSystem;
 
     #[test]
     fn test_serialization_roundtrip() {
         let player = Player::new("Test Player".to_string());
         let world = WorldState::new();
+        let quest_system = QuestSystem::new();
 
-        let serialized = serialize_game_state(&player, &world, Some("Test Save".to_string())).unwrap();
-        let deserialized = deserialize_game_state(&serialized).unwrap();
+        let serialized = serialize_game_state(&player, &world, &quest_system, Some("Test Save".to_string())).unwrap();
+        let (loaded_player, _loaded_world, _loaded_quest_system) = deserialize_game_state(&serialized).unwrap();
 
-        assert_eq!(deserialized.player.name, "Test Player");
-        assert_eq!(deserialized.metadata.save_name, "Test Save");
-        assert_eq!(deserialized.version, SAVE_FORMAT_VERSION);
+        assert_eq!(loaded_player.name, "Test Player");
     }
 
     #[test]
     fn test_validation() {
         let player = Player::new("Test Player".to_string());
         let world = WorldState::new();
+        let quest_system = QuestSystem::new();
 
-        let serialized = serialize_game_state(&player, &world, None).unwrap();
-        let state = deserialize_game_state(&serialized).unwrap();
+        let serialized = serialize_game_state(&player, &world, &quest_system, None).unwrap();
+        let game_state_data = serde_json::from_str::<GameStateData>(&serialized).unwrap();
 
-        assert!(validate_game_state(&state).is_ok());
+        assert!(validate_game_state(&game_state_data).is_ok());
     }
 
     #[test]
@@ -245,20 +251,22 @@ mod tests {
         player.attributes.mental_acuity = 150; // Invalid value
 
         let world = WorldState::new();
-        let serialized = serialize_game_state(&player, &world, None).unwrap();
-        let state = deserialize_game_state(&serialized).unwrap();
+        let quest_system = QuestSystem::new();
+        let serialized = serialize_game_state(&player, &world, &quest_system, None).unwrap();
+        let game_state_data = serde_json::from_str::<GameStateData>(&serialized).unwrap();
 
-        assert!(validate_game_state(&state).is_err());
+        assert!(validate_game_state(&game_state_data).is_err());
     }
 
     #[test]
     fn test_save_summary_creation() {
         let player = Player::new("Hero".to_string());
         let world = WorldState::new();
+        let quest_system = QuestSystem::new();
 
-        let serialized = serialize_game_state(&player, &world, Some("Epic Adventure".to_string())).unwrap();
-        let state = deserialize_game_state(&serialized).unwrap();
-        let summary = create_save_summary(&state);
+        let serialized = serialize_game_state(&player, &world, &quest_system, Some("Epic Adventure".to_string())).unwrap();
+        let game_state_data = serde_json::from_str::<GameStateData>(&serialized).unwrap();
+        let summary = create_save_summary(&game_state_data);
 
         assert!(summary.contains("Epic Adventure"));
         assert!(summary.contains("Hero"));

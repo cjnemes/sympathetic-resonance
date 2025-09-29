@@ -63,16 +63,27 @@ impl MagicSystem {
             world,
         )?;
 
-        // Apply costs and effects if successful
+        // Apply costs regardless of success to prevent zero-cost exploitation
+        // Failed attempts still consume resources, but at reduced rates
+        let cost_multiplier = if result.success { 1.0 } else { 0.5 };
+
+        // Use mental energy (always applied, scaled for failures)
+        let actual_energy_cost = (result.energy_cost as f32 * cost_multiplier) as i32;
+        let actual_fatigue_cost = (result.fatigue_cost as f32 * cost_multiplier) as i32;
+        caster.use_mental_energy(actual_energy_cost, actual_fatigue_cost)?;
+
+        // Degrade crystal (always applied, scaled for failures)
+        if let Some(crystal) = caster.active_crystal_mut() {
+            let actual_degradation = result.crystal_degradation * cost_multiplier;
+            crystal.degrade(actual_degradation);
+        }
+
+        // Apply time cost (always applied, full cost regardless of success)
+        world.advance_time(result.time_cost);
+        caster.playtime_minutes += result.time_cost;
+
+        // Only successful spells leave magical signatures and grant full experience
         if result.success {
-            // Use mental energy
-            caster.use_mental_energy(result.energy_cost, result.fatigue_cost)?;
-
-            // Degrade crystal
-            if let Some(crystal) = caster.active_crystal_mut() {
-                crystal.degrade(result.crystal_degradation);
-            }
-
             // Add magical signature to location
             world.add_magical_signature(
                 spell_type.to_string(),
@@ -80,12 +91,12 @@ impl MagicSystem {
                 crystal_frequency,
             );
 
-            // Advance time
-            world.advance_time(result.time_cost);
-            caster.playtime_minutes += result.time_cost;
-
-            // Add experience
+            // Add full experience for successful casts
             caster.add_experience(crate::core::player::AttributeType::ResonanceSensitivity, result.experience_gained);
+        } else {
+            // Failed attempts still provide some learning experience
+            let reduced_experience = (result.experience_gained as f32 * 0.25) as i32;
+            caster.add_experience(crate::core::player::AttributeType::ResonanceSensitivity, reduced_experience);
         }
 
         Ok(result)

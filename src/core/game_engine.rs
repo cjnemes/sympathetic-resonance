@@ -54,6 +54,15 @@ impl GameEngine {
         let mut knowledge_system = KnowledgeSystem::new();
         knowledge_system.initialize(&database)?;
 
+        // Initialize dialogue system and load NPCs from database
+        let mut dialogue_system = DialogueSystem::new();
+        // Try to load NPCs, but don't fail if they don't exist or are malformed
+        if let Ok(npcs) = database.load_npcs() {
+            for npc in npcs {
+                dialogue_system.add_npc(npc);
+            }
+        }
+
         // Initialize quest system with example quests
         let mut quest_system = QuestSystem::new();
         // Load quest definitions from database or create examples
@@ -67,7 +76,7 @@ impl GameEngine {
             world,
             magic_system: MagicSystem::new(),
             faction_system: FactionSystem::new(),
-            dialogue_system: DialogueSystem::new(),
+            dialogue_system,
             knowledge_system,
             quest_system,
             command_parser: CommandParser::new(),
@@ -154,9 +163,10 @@ impl GameEngine {
 
     /// Load a save file
     pub fn load_save(&mut self, save_path: &str) -> GameResult<()> {
-        let (player, world) = self.save_manager.load_game(save_path)?;
+        let (player, world, quest_system) = self.save_manager.load_game(save_path)?;
         self.player = player;
         self.world = world;
+        self.quest_system = quest_system;
         Ok(())
     }
 
