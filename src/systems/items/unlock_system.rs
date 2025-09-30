@@ -311,7 +311,6 @@ impl ItemUnlockSystem {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::Player;
 
     #[test]
     fn test_unlock_system_creation() {

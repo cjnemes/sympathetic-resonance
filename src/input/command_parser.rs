@@ -356,20 +356,67 @@ impl CommandParser {
                  • analyze magical signature"
             }
 
+            Some("items") | Some("item") => {
+                "Item Commands:\n\
+                 • take <item> - Pick up an item\n\
+                 • drop <item> - Drop an item from inventory\n\
+                 • give <item> to <person> - Give an item to someone\n\
+                 • use <item> - Use or consume an item\n\
+                 • hold <item> - Hold an item (same as take)\n\
+                 • get <item> - Get an item (same as take)\n\n\
+                 Examples:\n\
+                 • take sword\n\
+                 • drop healing potion\n\
+                 • give crystal to merchant\n\
+                 • use bandage"
+            }
+
+            Some("equipment") | Some("equip") => {
+                "Equipment Commands:\n\
+                 • equip <item> - Equip an item\n\
+                 • unequip <item> - Remove equipped item\n\
+                 • wear <item> - Wear equipment (same as equip)\n\
+                 • remove <item> - Remove equipment (same as unequip)\n\
+                 • wield <item> - Wield a weapon (same as equip)\n\n\
+                 Examples:\n\
+                 • equip crystal sword\n\
+                 • wear helmet\n\
+                 • unequip armor\n\
+                 • remove ring"
+            }
+
+            Some("crafting") | Some("craft") => {
+                "Crafting Commands:\n\
+                 • combine <item1> with <item2> - Combine items together\n\
+                 • craft <recipe> - Create item using recipe\n\
+                 • create <item> - Create item from components\n\
+                 • synthesize <items> - Synthesize magical items\n\
+                 • enhance <item> - Improve existing item\n\
+                 • repair <item> - Fix damaged item\n\n\
+                 Examples:\n\
+                 • combine crystal dust with water\n\
+                 • craft healing potion\n\
+                 • synthesize resonance crystal\n\
+                 • enhance sword with crystal"
+            }
+
             None => {
                 "Available Commands:\n\n\
-                 Movement: north, south, east, west, up, down\n\
-                 Examination: look, examine <target>\n\
-                 Magic: cast <spell> using <crystal>\n\
-                 Social: talk to <person>, ask <person> about <topic>\n\
-                 Quests: quest list, quest start <id>, quest status <id>\n\
-                 System: save, load, status, inventory, quit\n\n\
+                 Movement: north, south, east, west, up, down, go <direction>\n\
+                 Examination: look, examine <target>, analyze <target>\n\
+                 Items: take <item>, drop <item>, give <item> to <person>, use <item>\n\
+                 Equipment: equip <item>, unequip <item>, wear <item>, remove <item>\n\
+                 Crafting: combine <items>, craft <recipe>, create <item>, synthesize <items>\n\
+                 Magic: cast <spell> using <crystal>, study <theory>, research <topic>\n\
+                 Social: talk to <person>, ask <person> about <topic>, faction status\n\
+                 Quests: quest list, quest start <id>, quest status <id>, quest recommendations\n\
+                 System: save [slot], load [slot], status, inventory, quit\n\n\
                  For detailed help on a topic, type: help <topic>\n\
-                 Available topics: movement, magic, social, system, examination, quests"
+                 Available topics: movement, magic, social, system, examination, quests, items, equipment, crafting"
             }
 
             Some(unknown) => {
-                &format!("No help available for '{}'. Available topics: movement, magic, social, system, examination, quests", unknown)
+                &format!("No help available for '{}'. Available topics: movement, magic, social, system, examination, quests, items, equipment, crafting", unknown)
             }
         };
 
@@ -409,7 +456,27 @@ impl CommandParser {
         }
 
         if lower_input.contains("inv") || lower_input.contains("item") {
-            suggestions.push("Try: inventory, status".to_string());
+            suggestions.push("Try: inventory, status, take <item>, drop <item>".to_string());
+        }
+
+        if lower_input.contains("take") || lower_input.contains("get") || lower_input.contains("pick") {
+            suggestions.push("Try: take <item>, get <item>".to_string());
+        }
+
+        if lower_input.contains("drop") || lower_input.contains("put") {
+            suggestions.push("Try: drop <item>, put <item>".to_string());
+        }
+
+        if lower_input.contains("equip") || lower_input.contains("wear") || lower_input.contains("wield") {
+            suggestions.push("Try: equip <item>, wear <item>".to_string());
+        }
+
+        if lower_input.contains("craft") || lower_input.contains("combine") || lower_input.contains("create") {
+            suggestions.push("Try: combine <item1> with <item2>, craft <recipe>".to_string());
+        }
+
+        if lower_input.contains("quest") {
+            suggestions.push("Try: quest list, quest start <id>, quest status".to_string());
         }
 
         if lower_input.contains("help") {
