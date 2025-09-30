@@ -177,19 +177,29 @@ Database path: `content/database.db`
 
 ## Save System
 
-**Save Format:** JSON serialization of game state
+**Save Format:** JSON serialization of game state (compressed)
 **Save Location:** Platform-specific (uses `dirs` crate)
+- macOS: `~/Library/Application Support/SympatheticResonance/saves/`
+- Linux: `~/.local/share/sympathetic-resonance/saves/`
+- Windows: `%LOCALAPPDATA%\SympatheticResonance\saves\`
+
 **Slot System:** Named save slots with path traversal protection
 - Slot names sanitized to alphanumeric, underscore, hyphen only
 - Maximum 50 characters
-- Default to "default" for empty/invalid names
+- Default to "autosave" if not specified
+- Automatic backups created before overwriting
+
+**Commands:**
+- `save` or `save <slot_name>` - Save current game state
+- `load` or `load <slot_name>` - Load saved game state
 
 **Save includes:**
 - Player state (attributes, inventory, knowledge)
-- World state (location, time, conditions)
-- Quest progress
+- World state (location, time, conditions, events)
+- Quest progress and active quests
 - Faction reputation
 - Theory understanding levels
+- Learning history and research progress
 
 ## Magic System Details
 
