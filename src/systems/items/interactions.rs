@@ -247,8 +247,8 @@ impl ItemInteraction {
         id: String,
         target_item: ItemId,
         catalyst_items: Vec<(ItemId, i32)>,
-        enhancement: ItemEnhancement,
-        success_chance: f32,
+        _enhancement: ItemEnhancement,
+        _success_chance: f32,
     ) -> Self {
         let mut inputs = vec![InteractionInput {
             item_requirement: ItemRequirement::SpecificItem(target_item),
@@ -401,7 +401,7 @@ impl ItemInteraction {
     ) -> GameResult<()> {
         match &input.item_requirement {
             ItemRequirement::SpecificItem(item_id) => {
-                if let Some((item, quantity)) = available_items.get_mut(item_id) {
+                if let Some((_item, quantity)) = available_items.get_mut(item_id) {
                     if *quantity >= input.quantity {
                         *quantity -= input.quantity;
                         result.consumed_items.push(item_id.clone());
@@ -422,7 +422,7 @@ impl ItemInteraction {
     fn calculate_success_probability(
         &self,
         player_attributes: &HashMap<String, i32>,
-        player_theories: &[String],
+        _player_theories: &[String],
     ) -> f32 {
         let mut base_prob = 0.5; // 50% base success rate
 

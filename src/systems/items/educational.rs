@@ -454,6 +454,575 @@ impl EducationalItemFactory {
     }
 }
 
+/// Faction-specific educational item factories
+pub struct FactionItemFactory;
+
+impl FactionItemFactory {
+    // MAGISTERS' COUNCIL - Academic Excellence Items
+
+    /// Council Scholar's Circlet - Head equipment for academic mastery
+    pub fn council_scholars_circlet() -> EducationalItem {
+        EducationalItem {
+            name: "Council Scholar's Circlet".to_string(),
+            item_function: EducationalFunction::MethodEnhancer {
+                method: LearningMethod::Study,
+                bonus: 0.4
+            },
+            learning_bonuses: vec![
+                LearningBonus {
+                    bonus_type: BonusType::LearningEfficiency,
+                    bonus_multiplier: 0.4, // +40% Study efficiency
+                    conditions: BonusConditions {
+                        applicable_theories: None, // All theories
+                        applicable_methods: Some(vec![LearningMethod::Study]),
+                        min_level: None,
+                        time_requirements: None,
+                        environment: None,
+                    },
+                },
+                LearningBonus {
+                    bonus_type: BonusType::ExperienceBonus,
+                    bonus_multiplier: -0.2, // -20% Experimentation (too cautious)
+                    conditions: BonusConditions {
+                        applicable_theories: None,
+                        applicable_methods: Some(vec![LearningMethod::Experimentation]),
+                        min_level: None,
+                        time_requirements: None,
+                        environment: None,
+                    },
+                }
+            ],
+            usage_requirements: UsageRequirements {
+                min_attributes: {
+                    let mut attrs = HashMap::new();
+                    attrs.insert("mental_acuity".to_string(), 60);
+                    attrs
+                },
+                required_theories: vec![
+                    "harmonic_fundamentals".to_string(),
+                    "crystal_structures".to_string(),
+                    "mental_resonance".to_string(),
+                    "bio_resonance".to_string(),
+                    "detection_arrays".to_string(),
+                ],
+                faction_requirements: {
+                    let mut factions = HashMap::new();
+                    factions.insert("MagistersCouncil".to_string(), 75); // Allied tier
+                    factions
+                },
+                required_items: Vec::new(),
+            },
+        }
+    }
+
+    /// Codified Theory Compendium - Cross-referenced academic knowledge
+    pub fn codified_theory_compendium() -> EducationalItem {
+        EducationalItem {
+            name: "Codified Theory Compendium".to_string(),
+            item_function: EducationalFunction::KnowledgeArchive {
+                theories: vec![
+                    "harmonic_fundamentals".to_string(),
+                    "crystal_structures".to_string(),
+                    "mental_resonance".to_string(),
+                    "bio_resonance".to_string(),
+                    "detection_arrays".to_string(),
+                ]
+            },
+            learning_bonuses: vec![
+                LearningBonus {
+                    bonus_type: BonusType::UnderstandingGain,
+                    bonus_multiplier: 0.3, // +30% Understanding gain for Tier 1-2
+                    conditions: BonusConditions {
+                        applicable_theories: Some(vec![
+                            "harmonic_fundamentals".to_string(),
+                            "crystal_structures".to_string(),
+                            "mental_resonance".to_string(),
+                            "bio_resonance".to_string(),
+                            "detection_arrays".to_string(),
+                        ]),
+                        applicable_methods: Some(vec![LearningMethod::Study, LearningMethod::Research]),
+                        min_level: None,
+                        time_requirements: None,
+                        environment: None,
+                    },
+                }
+            ],
+            usage_requirements: UsageRequirements {
+                min_attributes: HashMap::new(),
+                required_theories: Vec::new(),
+                faction_requirements: {
+                    let mut factions = HashMap::new();
+                    factions.insert("MagistersCouncil".to_string(), 25); // Friendly tier
+                    factions
+                },
+                required_items: Vec::new(),
+            },
+        }
+    }
+
+    /// Academy Research Laboratory - Controlled experimental environment
+    pub fn academy_research_laboratory() -> EducationalItem {
+        EducationalItem::new_research_tool(
+            "Academy Research Laboratory".to_string(),
+            "controlled_laboratory".to_string(),
+            "crystal_structures".to_string(),
+            0.8, // High understanding required
+            1.0, // +100% precision for controlled experiments
+        )
+        .add_attribute_requirement("mental_acuity".to_string(), 80)
+        .add_faction_requirement("MagistersCouncil".to_string(), 100) // Champion tier
+        .add_theory_requirement("harmonic_fundamentals".to_string())
+        .add_theory_requirement("detection_arrays".to_string())
+    }
+
+    // ORDER OF NATURAL HARMONY - Spiritual Balance Items
+
+    /// Harmony Meditation Stone - Natural rhythm enhancement
+    pub fn harmony_meditation_stone() -> EducationalItem {
+        EducationalItem {
+            name: "Harmony Meditation Stone".to_string(),
+            item_function: EducationalFunction::MethodEnhancer {
+                method: LearningMethod::Study,
+                bonus: 0.35
+            },
+            learning_bonuses: vec![
+                LearningBonus {
+                    bonus_type: BonusType::LearningEfficiency,
+                    bonus_multiplier: 0.35, // +35% Study efficiency
+                    conditions: BonusConditions {
+                        applicable_theories: None,
+                        applicable_methods: Some(vec![LearningMethod::Study]),
+                        min_level: None,
+                        time_requirements: Some(TimeRequirement {
+                            effective_hours: vec![5, 6, 18, 19, 20], // Dawn/dusk hours
+                            seasons: None,
+                        }),
+                        environment: Some("natural".to_string()),
+                    },
+                },
+                LearningBonus {
+                    bonus_type: BonusType::EnergyCostReduction,
+                    bonus_multiplier: 0.25, // +25% energy recovery
+                    conditions: BonusConditions {
+                        applicable_theories: None,
+                        applicable_methods: None, // All methods
+                        min_level: None,
+                        time_requirements: None,
+                        environment: None,
+                    },
+                }
+            ],
+            usage_requirements: UsageRequirements {
+                min_attributes: {
+                    let mut attrs = HashMap::new();
+                    attrs.insert("resonance_sensitivity".to_string(), 40);
+                    attrs
+                },
+                required_theories: Vec::new(),
+                faction_requirements: {
+                    let mut factions = HashMap::new();
+                    factions.insert("OrderOfNaturalHarmony".to_string(), 25); // Friendly tier
+                    factions
+                },
+                required_items: Vec::new(),
+            },
+        }
+    }
+
+    /// Living Crystal Garden - Symbiotic growth system
+    pub fn living_crystal_garden() -> EducationalItem {
+        EducationalItem::new_research_tool(
+            "Living Crystal Garden".to_string(),
+            "symbiotic_laboratory".to_string(),
+            "bio_resonance".to_string(),
+            0.6,
+            0.4, // +40% precision for bio-resonance research
+        )
+        .add_attribute_requirement("resonance_sensitivity".to_string(), 50)
+        .add_faction_requirement("OrderOfNaturalHarmony".to_string(), 75) // Allied tier
+        .add_theory_requirement("bio_resonance".to_string())
+    }
+
+    /// Nature's Wisdom Tome - Seasonal knowledge cycles
+    pub fn natures_wisdom_tome() -> EducationalItem {
+        EducationalItem {
+            name: "Nature's Wisdom Tome".to_string(),
+            item_function: EducationalFunction::KnowledgeArchive {
+                theories: vec![
+                    "bio_resonance".to_string(),
+                    "detection_arrays".to_string(),
+                    "harmonic_fundamentals".to_string(),
+                ]
+            },
+            learning_bonuses: vec![
+                LearningBonus {
+                    bonus_type: BonusType::LearningEfficiency,
+                    bonus_multiplier: 0.45, // +45% for nature-related theories
+                    conditions: BonusConditions {
+                        applicable_theories: Some(vec![
+                            "bio_resonance".to_string(),
+                            "detection_arrays".to_string(),
+                        ]),
+                        applicable_methods: Some(vec![
+                            LearningMethod::Study,
+                            LearningMethod::Observation
+                        ]),
+                        min_level: None,
+                        time_requirements: Some(TimeRequirement {
+                            effective_hours: vec![], // Any time
+                            seasons: Some(vec!["spring".to_string(), "summer".to_string()]),
+                        }),
+                        environment: Some("natural".to_string()),
+                    },
+                }
+            ],
+            usage_requirements: UsageRequirements {
+                min_attributes: HashMap::new(),
+                required_theories: Vec::new(),
+                faction_requirements: {
+                    let mut factions = HashMap::new();
+                    factions.insert("OrderOfNaturalHarmony".to_string(), 75); // Allied tier
+                    factions
+                },
+                required_items: Vec::new(),
+            },
+        }
+    }
+
+    // INDUSTRIAL CONSORTIUM - Technological Innovation Items
+
+    /// Efficiency Optimizer Goggles - Process analysis enhancement
+    pub fn efficiency_optimizer_goggles() -> EducationalItem {
+        EducationalItem {
+            name: "Efficiency Optimizer Goggles".to_string(),
+            item_function: EducationalFunction::MethodEnhancer {
+                method: LearningMethod::Experimentation,
+                bonus: 0.25
+            },
+            learning_bonuses: vec![
+                LearningBonus {
+                    bonus_type: BonusType::LearningEfficiency,
+                    bonus_multiplier: 0.25, // +25% Experimentation efficiency
+                    conditions: BonusConditions {
+                        applicable_theories: None,
+                        applicable_methods: Some(vec![LearningMethod::Experimentation]),
+                        min_level: None,
+                        time_requirements: None,
+                        environment: None,
+                    },
+                },
+                LearningBonus {
+                    bonus_type: BonusType::ResearchSpeed,
+                    bonus_multiplier: 0.35, // +35% Research speed
+                    conditions: BonusConditions {
+                        applicable_theories: None,
+                        applicable_methods: Some(vec![LearningMethod::Research]),
+                        min_level: None,
+                        time_requirements: None,
+                        environment: Some("workshop".to_string()),
+                    },
+                }
+            ],
+            usage_requirements: UsageRequirements {
+                min_attributes: {
+                    let mut attrs = HashMap::new();
+                    attrs.insert("mental_acuity".to_string(), 45);
+                    attrs
+                },
+                required_theories: Vec::new(),
+                faction_requirements: {
+                    let mut factions = HashMap::new();
+                    factions.insert("IndustrialConsortium".to_string(), 25); // Friendly tier
+                    factions
+                },
+                required_items: Vec::new(),
+            },
+        }
+    }
+
+    /// Advanced Experimental Apparatus - High-risk, high-reward research
+    pub fn advanced_experimental_apparatus() -> EducationalItem {
+        EducationalItem::new_research_tool(
+            "Advanced Experimental Apparatus".to_string(),
+            "industrial_laboratory".to_string(),
+            "light_manipulation".to_string(),
+            0.7,
+            0.6, // +60% experimentation precision
+        )
+        .add_attribute_requirement("mental_acuity".to_string(), 65)
+        .add_faction_requirement("IndustrialConsortium".to_string(), 75) // Allied tier
+        .add_theory_requirement("resonance_amplification".to_string())
+    }
+
+    /// Innovation Database - Commercial magical techniques
+    pub fn innovation_database() -> EducationalItem {
+        EducationalItem {
+            name: "Innovation Database".to_string(),
+            item_function: EducationalFunction::KnowledgeArchive {
+                theories: vec![
+                    "light_manipulation".to_string(),
+                    "resonance_amplification".to_string(),
+                    "sympathetic_networks".to_string(),
+                ]
+            },
+            learning_bonuses: vec![
+                LearningBonus {
+                    bonus_type: BonusType::LearningEfficiency,
+                    bonus_multiplier: 0.3, // +30% for commercial theories
+                    conditions: BonusConditions {
+                        applicable_theories: Some(vec![
+                            "light_manipulation".to_string(),
+                            "resonance_amplification".to_string(),
+                        ]),
+                        applicable_methods: Some(vec![
+                            LearningMethod::Research,
+                            LearningMethod::Experimentation
+                        ]),
+                        min_level: None,
+                        time_requirements: None,
+                        environment: None,
+                    },
+                }
+            ],
+            usage_requirements: UsageRequirements {
+                min_attributes: HashMap::new(),
+                required_theories: Vec::new(),
+                faction_requirements: {
+                    let mut factions = HashMap::new();
+                    factions.insert("IndustrialConsortium".to_string(), 25); // Friendly tier
+                    factions
+                },
+                required_items: Vec::new(),
+            },
+        }
+    }
+
+    // UNDERGROUND NETWORK - Revolutionary Methods Items
+
+    /// Forbidden Knowledge Cache - Dangerous but powerful learning
+    pub fn forbidden_knowledge_cache() -> EducationalItem {
+        EducationalItem {
+            name: "Forbidden Knowledge Cache".to_string(),
+            item_function: EducationalFunction::KnowledgeArchive {
+                theories: vec![
+                    "sympathetic_networks".to_string(),
+                    "theoretical_synthesis".to_string(),
+                ]
+            },
+            learning_bonuses: vec![
+                LearningBonus {
+                    bonus_type: BonusType::LearningEfficiency,
+                    bonus_multiplier: 0.5, // +50% for dangerous theories
+                    conditions: BonusConditions {
+                        applicable_theories: Some(vec![
+                            "sympathetic_networks".to_string(),
+                            "theoretical_synthesis".to_string(),
+                        ]),
+                        applicable_methods: Some(vec![
+                            LearningMethod::Research,
+                            LearningMethod::Experimentation
+                        ]),
+                        min_level: None,
+                        time_requirements: None,
+                        environment: Some("hidden".to_string()),
+                    },
+                }
+            ],
+            usage_requirements: UsageRequirements {
+                min_attributes: HashMap::new(),
+                required_theories: Vec::new(),
+                faction_requirements: {
+                    let mut factions = HashMap::new();
+                    factions.insert("UndergroundNetwork".to_string(), 25); // Friendly tier
+                    factions
+                },
+                required_items: Vec::new(),
+            },
+        }
+    }
+
+    /// Experimental Risk Amplifier - Maximum risk, maximum reward
+    pub fn experimental_risk_amplifier() -> EducationalItem {
+        EducationalItem::new_research_tool(
+            "Experimental Risk Amplifier".to_string(),
+            "dangerous_apparatus".to_string(),
+            "theoretical_synthesis".to_string(),
+            0.8,
+            0.8, // +80% experimentation efficiency
+        )
+        .add_attribute_requirement("resonance_sensitivity".to_string(), 70)
+        .add_faction_requirement("UndergroundNetwork".to_string(), 75) // Allied tier
+        .add_theory_requirement("sympathetic_networks".to_string())
+    }
+
+    /// Black Market Research Tools - Variable quality illegal equipment
+    pub fn black_market_research_tools() -> EducationalItem {
+        EducationalItem::new_research_tool(
+            "Black Market Research Tools".to_string(),
+            "illegal_apparatus".to_string(),
+            "resonance_amplification".to_string(),
+            0.5,
+            0.45, // +45% research efficiency (variable)
+        )
+        .add_faction_requirement("UndergroundNetwork".to_string(), 75) // Allied tier
+    }
+
+    // NEUTRAL SCHOLARS - Synthesis & Balance Items
+
+    /// Diplomatic Synthesis Lens - Cross-cultural analysis
+    pub fn diplomatic_synthesis_lens() -> EducationalItem {
+        EducationalItem {
+            name: "Diplomatic Synthesis Lens".to_string(),
+            item_function: EducationalFunction::MethodEnhancer {
+                method: LearningMethod::Study,
+                bonus: 0.3
+            },
+            learning_bonuses: vec![
+                LearningBonus {
+                    bonus_type: BonusType::LearningEfficiency,
+                    bonus_multiplier: 0.3, // +30% when studying multiple factions
+                    conditions: BonusConditions {
+                        applicable_theories: None, // All theories
+                        applicable_methods: Some(vec![LearningMethod::Study, LearningMethod::Research]),
+                        min_level: None,
+                        time_requirements: None,
+                        environment: None,
+                    },
+                }
+            ],
+            usage_requirements: UsageRequirements {
+                min_attributes: HashMap::new(),
+                required_theories: Vec::new(),
+                faction_requirements: {
+                    let mut factions = HashMap::new();
+                    factions.insert("NeutralScholars".to_string(), 25); // Friendly tier
+                    factions
+                },
+                required_items: Vec::new(),
+            },
+        }
+    }
+
+    /// Universal Theory Framework - Cross-faction synthesis
+    pub fn universal_theory_framework() -> EducationalItem {
+        EducationalItem {
+            name: "Universal Theory Framework".to_string(),
+            item_function: EducationalFunction::KnowledgeArchive {
+                theories: vec![
+                    "harmonic_fundamentals".to_string(),
+                    "crystal_structures".to_string(),
+                    "mental_resonance".to_string(),
+                    "bio_resonance".to_string(),
+                    "detection_arrays".to_string(),
+                    "light_manipulation".to_string(),
+                    "resonance_amplification".to_string(),
+                    "sympathetic_networks".to_string(),
+                    "theoretical_synthesis".to_string(),
+                ]
+            },
+            learning_bonuses: vec![
+                LearningBonus {
+                    bonus_type: BonusType::LearningEfficiency,
+                    bonus_multiplier: 0.35, // +35% for any theory
+                    conditions: BonusConditions {
+                        applicable_theories: None, // All theories
+                        applicable_methods: None, // All methods
+                        min_level: None,
+                        time_requirements: None,
+                        environment: None,
+                    },
+                },
+                LearningBonus {
+                    bonus_type: BonusType::LearningEfficiency,
+                    bonus_multiplier: 0.45, // +45% bonus for theory combinations
+                    conditions: BonusConditions {
+                        applicable_theories: Some(vec![
+                            "sympathetic_networks".to_string(),
+                            "theoretical_synthesis".to_string(),
+                        ]),
+                        applicable_methods: Some(vec![LearningMethod::Research]),
+                        min_level: None,
+                        time_requirements: None,
+                        environment: None,
+                    },
+                }
+            ],
+            usage_requirements: UsageRequirements {
+                min_attributes: HashMap::new(),
+                required_theories: vec![
+                    "harmonic_fundamentals".to_string(), // At least one from each faction
+                    "bio_resonance".to_string(),
+                    "light_manipulation".to_string(),
+                    "sympathetic_networks".to_string(),
+                ],
+                faction_requirements: {
+                    let mut factions = HashMap::new();
+                    factions.insert("NeutralScholars".to_string(), 75); // Allied tier
+                    factions
+                },
+                required_items: Vec::new(),
+            },
+        }
+    }
+
+    /// Synthesis Master's Archive - Grand synthesis capabilities
+    pub fn synthesis_masters_archive() -> EducationalItem {
+        EducationalItem {
+            name: "Synthesis Master's Archive".to_string(),
+            item_function: EducationalFunction::KnowledgeArchive {
+                theories: vec![
+                    "theoretical_synthesis".to_string(),
+                    "sympathetic_networks".to_string(),
+                    "resonance_amplification".to_string(),
+                    "light_manipulation".to_string(),
+                ]
+            },
+            learning_bonuses: vec![
+                LearningBonus {
+                    bonus_type: BonusType::LearningEfficiency,
+                    bonus_multiplier: 0.6, // +60% for synthesis and Tier 3 theories
+                    conditions: BonusConditions {
+                        applicable_theories: Some(vec![
+                            "theoretical_synthesis".to_string(),
+                            "sympathetic_networks".to_string(),
+                            "resonance_amplification".to_string(),
+                            "light_manipulation".to_string(),
+                        ]),
+                        applicable_methods: None, // All methods
+                        min_level: None,
+                        time_requirements: None,
+                        environment: None,
+                    },
+                }
+            ],
+            usage_requirements: UsageRequirements {
+                min_attributes: {
+                    let mut attrs = HashMap::new();
+                    attrs.insert("mental_acuity".to_string(), 90);
+                    attrs.insert("resonance_sensitivity".to_string(), 80);
+                    attrs
+                },
+                required_theories: vec![
+                    "harmonic_fundamentals".to_string(),
+                    "crystal_structures".to_string(),
+                    "mental_resonance".to_string(),
+                    "bio_resonance".to_string(),
+                    "detection_arrays".to_string(),
+                    "light_manipulation".to_string(),
+                    "resonance_amplification".to_string(),
+                    "sympathetic_networks".to_string(),
+                ],
+                faction_requirements: {
+                    let mut factions = HashMap::new();
+                    factions.insert("NeutralScholars".to_string(), 100); // Champion tier
+                    factions
+                },
+                required_items: Vec::new(),
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -13,12 +13,14 @@ pub mod equipment;
 pub mod educational;
 pub mod inventory;
 pub mod interactions;
+pub mod unlock_system;
 
 pub use core::{Item, ItemId, ItemType, ItemRarity, ItemProperties, ItemEffect};
 pub use equipment::{Equipment, EquipmentSlot, EquipmentManager, EquipmentBonus};
-pub use educational::{EducationalItem, LearningBonus, ResearchTool, CollaborativeTool};
+pub use educational::{EducationalItem, LearningBonus, ResearchTool, CollaborativeTool, FactionItemFactory};
 pub use inventory::{InventoryManager, InventoryConstraints, InventoryError};
 pub use interactions::{ItemInteraction, InteractionResult, CombinationRule};
+pub use unlock_system::{ItemUnlockSystem, UnlockRequirement, UnlockCategory, UnlockEvent};
 
 use crate::core::Player;
 use crate::systems::knowledge::LearningMethod;
@@ -37,6 +39,8 @@ pub struct ItemSystem {
     pub interaction_rules: HashMap<String, CombinationRule>,
     /// Educational item database
     pub educational_items: HashMap<ItemId, EducationalItem>,
+    /// Progressive unlock system for items
+    pub unlock_system: ItemUnlockSystem,
 }
 
 impl ItemSystem {
@@ -47,6 +51,7 @@ impl ItemSystem {
             equipment_manager: EquipmentManager::new(),
             interaction_rules: Self::default_interaction_rules(),
             educational_items: Self::default_educational_items(),
+            unlock_system: Self::setup_unlock_system(),
         }
     }
 
@@ -354,7 +359,7 @@ impl ItemSystem {
         }
     }
 
-    fn use_tool(&self, player: &mut Player, tool_function: &str, target: Option<&str>) -> GameResult<String> {
+    fn use_tool(&self, player: &mut Player, tool_function: &str, _target: Option<&str>) -> GameResult<String> {
         match tool_function {
             "resonance_measurement" => {
                 if let Some(crystal) = player.active_crystal() {
@@ -433,6 +438,110 @@ impl ItemSystem {
     fn default_educational_items() -> HashMap<ItemId, EducationalItem> {
         // TODO: Implement default educational items catalog
         HashMap::new()
+    }
+
+    /// Setup the unlock system with default unlock requirements
+    fn setup_unlock_system() -> ItemUnlockSystem {
+        let mut unlock_system = ItemUnlockSystem::new();
+
+        // Register faction-specific item unlocks
+        unlock_system.register_item_unlock(
+            "council_scholars_circlet".to_string(),
+            ItemUnlockSystem::faction_unlock("magisters_council", 50), // Allied level
+            UnlockCategory::FactionLoyalty,
+        );
+
+        unlock_system.register_item_unlock(
+            "harmony_meditation_stone".to_string(),
+            ItemUnlockSystem::faction_unlock("order_of_natural_harmony", 25), // Friendly level
+            UnlockCategory::FactionLoyalty,
+        );
+
+        unlock_system.register_item_unlock(
+            "efficiency_optimizer_goggles".to_string(),
+            ItemUnlockSystem::faction_unlock("industrial_consortium", 25), // Friendly level
+            UnlockCategory::FactionLoyalty,
+        );
+
+        unlock_system.register_item_unlock(
+            "forbidden_knowledge_cache".to_string(),
+            ItemUnlockSystem::faction_unlock("underground_network", 25), // Friendly level
+            UnlockCategory::FactionLoyalty,
+        );
+
+        unlock_system.register_item_unlock(
+            "diplomatic_synthesis_lens".to_string(),
+            ItemUnlockSystem::faction_unlock("neutral_scholars", 25), // Friendly level
+            UnlockCategory::FactionLoyalty,
+        );
+
+        // Register theory-specific unlocks
+        unlock_system.register_item_unlock(
+            "crystal_analysis_kit".to_string(),
+            ItemUnlockSystem::theory_unlock("crystal_structures", 0.25), // Apprentice level
+            UnlockCategory::TheoryProgression,
+        );
+
+        unlock_system.register_item_unlock(
+            "advanced_crystal_refiner".to_string(),
+            ItemUnlockSystem::theory_unlock("crystal_structures", 0.75), // Expert level
+            UnlockCategory::TheoryProgression,
+        );
+
+        unlock_system.register_item_unlock(
+            "neural_amplification_headband".to_string(),
+            ItemUnlockSystem::theory_unlock("mental_resonance", 0.50), // Journeyman level
+            UnlockCategory::TheoryProgression,
+        );
+
+        unlock_system.register_item_unlock(
+            "bio_resonance_scanner".to_string(),
+            ItemUnlockSystem::theory_unlock("bio_resonance", 0.50), // Journeyman level
+            UnlockCategory::TheoryProgression,
+        );
+
+        // Register combined requirements for advanced items
+        unlock_system.register_item_unlock(
+            "grand_synthesis_apparatus".to_string(),
+            ItemUnlockSystem::multi_theory_unlock(vec![
+                ("crystal_structures", 0.90),
+                ("mental_resonance", 0.90),
+                ("theoretical_synthesis", 0.90),
+            ]),
+            UnlockCategory::Special,
+        );
+
+        unlock_system
+    }
+
+    /// Check if an item is unlocked for the player
+    pub fn is_item_unlocked(&self, player: &Player, item_id: &ItemId) -> bool {
+        self.unlock_system.check_unlock_requirements(player, item_id)
+    }
+
+    /// Get all unlocked items for the player
+    pub fn get_unlocked_items(&self, player: &Player) -> Vec<ItemId> {
+        self.unlock_system.get_unlocked_items(player)
+    }
+
+    /// Check for new unlocks and return notification events
+    pub fn check_for_new_unlocks(&mut self, player: &Player) -> Vec<UnlockEvent> {
+        self.unlock_system.check_for_new_unlocks(player)
+    }
+
+    /// Get unlock progress for a specific category
+    pub fn get_unlock_progress(&self, player: &Player, category: UnlockCategory) -> (usize, usize) {
+        self.unlock_system.get_category_progress(player, category)
+    }
+
+    /// Get recent unlock notifications
+    pub fn get_recent_unlocks(&self) -> &[UnlockEvent] {
+        self.unlock_system.get_recent_unlocks()
+    }
+
+    /// Clear recent unlock notifications
+    pub fn clear_recent_unlocks(&mut self) {
+        self.unlock_system.clear_recent_unlocks()
     }
 }
 
