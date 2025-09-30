@@ -132,7 +132,7 @@ impl GameEngine {
 
         match parse_result {
             crate::input::CommandResult::Success(command) => {
-                execute_command(command, &mut self.player, &mut self.world, &self.database, &mut self.magic_system, &mut self.dialogue_system, &mut self.faction_system, &mut self.knowledge_system, &mut self.quest_system)
+                execute_command(command, &mut self.player, &mut self.world, &self.database, &mut self.magic_system, &mut self.dialogue_system, &mut self.faction_system, &mut self.knowledge_system, &mut self.quest_system, &self.save_manager)
             }
             crate::input::CommandResult::Error(msg) => {
                 Ok(msg)
