@@ -38,9 +38,18 @@ fn create_resonance_foundation_quest() -> QuestDefinition {
     QuestDefinition {
         id: "resonance_foundation".to_string(),
         title: "Understanding Resonance".to_string(),
-        description: "Learn the fundamental principles of sympathetic resonance by working with \
-                     crystals in the Practice Hall. This quest introduces the core concepts of \
-                     frequency matching and energy conservation that underpin all magical theory.".to_string(),
+        description: "The soft hum of crystals fills the Practice Hall as you begin your journey into the \
+                     mysteries of sympathetic resonance. Under the gentle guidance of Tutorial Assistant \
+                     Elara Starweaver, you'll discover how the universe itself sings in frequencies that \
+                     can be learned, matched, and harmonized.\n\n\
+                     This foundational quest will teach you to listen to the crystalline songs that have \
+                     echoed through these halls for generations, revealing the elegant principles of frequency \
+                     matching and energy conservation that form the bedrock of all magical understanding.\n\n\
+                     As you work with your first resonance crystals, you'll begin to sense the invisible \
+                     threads that connect all things - the sympathetic bonds that allow energy to flow \
+                     from one system to another in perfect harmony. Every great mage's journey begins \
+                     with this single, profound realization: magic is not about forcing your will upon \
+                     the world, but about finding the frequency at which the world is already singing.".to_string(),
         category: QuestCategory::Tutorial,
         difficulty: QuestDifficulty::Beginner,
 
@@ -61,7 +70,8 @@ fn create_resonance_foundation_quest() -> QuestDefinition {
         objectives: vec![
             QuestObjective {
                 id: "visit_practice_hall".to_string(),
-                description: "Visit the Practice Hall to begin your resonance studies".to_string(),
+                description: "Step into the Practice Hall and feel the ancient crystals welcoming you to your magical studies. \
+                             The carved walls here have witnessed thousands of students take their first steps into resonance theory.".to_string(),
                 objective_type: ObjectiveType::VisitLocation {
                     location_id: "practice_hall".to_string()
                 },
@@ -76,7 +86,10 @@ fn create_resonance_foundation_quest() -> QuestDefinition {
             },
             QuestObjective {
                 id: "learn_harmonic_fundamentals".to_string(),
-                description: "Study Harmonic Fundamentals to 30% understanding".to_string(),
+                description: "Immerse yourself in the study of Harmonic Fundamentals until the concepts become clear. \
+                             Feel the knowledge settling into your mind like sediment in still water - each insight \
+                             building upon the last until you achieve a foundational understanding (30%) of how \
+                             frequencies create the music of magic.".to_string(),
                 objective_type: ObjectiveType::LearnTheory {
                     theory_id: "harmonic_fundamentals".to_string(),
                     min_level: 0.3
@@ -92,7 +105,10 @@ fn create_resonance_foundation_quest() -> QuestDefinition {
             },
             QuestObjective {
                 id: "demonstrate_resonance".to_string(),
-                description: "Perform a basic resonance demonstration using your understanding".to_string(),
+                description: "Channel your newfound understanding into action - perform a resonance demonstration \
+                             that proves you can match frequencies and create sympathetic vibrations. Watch as \
+                             theory transforms into reality before your eyes, the crystal responding to your \
+                             careful attunement with a gentle, harmonic glow.".to_string(),
                 objective_type: ObjectiveType::MagicalDemonstration {
                     theory_id: "harmonic_fundamentals".to_string(),
                     success_threshold: 0.7
@@ -108,7 +124,10 @@ fn create_resonance_foundation_quest() -> QuestDefinition {
             },
             QuestObjective {
                 id: "discuss_with_tutorial_assistant".to_string(),
-                description: "Discuss your findings with the Tutorial Assistant".to_string(),
+                description: "Share your discoveries with Tutorial Assistant Elara Starweaver, whose encouraging \
+                             smile and thoughtful questions will help you reflect on what you've learned. In this \
+                             conversation, you'll begin to see how your individual insights connect to the larger \
+                             tapestry of magical knowledge.".to_string(),
                 objective_type: ObjectiveType::TalkToNPC {
                     npc_id: "tutorial_assistant".to_string(),
                     topic: Some("resonance_results".to_string())
@@ -336,9 +355,18 @@ fn create_crystal_analysis_quest() -> QuestDefinition {
     QuestDefinition {
         id: "crystal_analysis".to_string(),
         title: "Crystal Analysis Project".to_string(),
-        description: "Conduct an in-depth study of crystal structures and their magical properties. \
-                     Your approach will determine whether you focus on pure research or commercial \
-                     applications, affecting your relationships with different factions.".to_string(),
+        description: "The Crystal Garden Laboratory awaits your deeper exploration into the intricate world \
+                     of crystalline structures and their magical properties. Here, among towering crystal \
+                     formations that pulse with inner light, you'll embark on a research journey that will \
+                     shape not only your understanding but also your standing with the various factions.\n\n\
+                     Dr. Felix Verdant and Technician Marcus Clearview represent two divergent paths: will you \
+                     pursue the pure academic quest for knowledge, documenting crystalline phenomena for the \
+                     advancement of theoretical understanding? Or will you focus on practical applications, \
+                     optimizing crystal efficiency for the Industrial Consortium's commercial ventures?\n\n\
+                     Each crystal tells a story written in molecular lattices and harmonic frequencies. As you \
+                     learn to read these crystalline narratives, you'll discover that the choices you make \
+                     in your research approach will echo through the political landscape of the magical \
+                     community, influencing how different factions view your work and your potential.".to_string(),
         category: QuestCategory::Research,
         difficulty: QuestDifficulty::Intermediate,
 

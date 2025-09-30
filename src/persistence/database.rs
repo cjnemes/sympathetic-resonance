@@ -911,6 +911,47 @@ impl DatabaseManager {
             "unstable_resonance_site"
         )?;
 
+        // Tutorial Assistant - Essential for the tutorial quest progression
+        self.insert_npc(
+            "tutorial_assistant",
+            "Tutorial Assistant Elara Starweaver",
+            "A patient and encouraging instructor who specializes in helping new students understand the fundamentals of sympathetic resonance. Her warm smile and gentle guidance have helped countless beginners take their first steps into magical theory.",
+            Some("neutral_scholars"),
+            &create_dialogue_tree(
+                vec![
+                    "Welcome to your magical studies! I'm here to help you understand the wonderful world of sympathetic resonance.",
+                    "Every great mage started exactly where you are now. Don't worry - we'll take this one step at a time."
+                ],
+                vec![
+                    ("resonance_results", vec![
+                        "Excellent work! You're beginning to understand how frequency matching creates sympathetic resonance.",
+                        "The patterns you observed show that you're grasping the fundamental principles.",
+                        "Remember, resonance is about harmony - finding the frequency that allows two systems to vibrate together.",
+                        "Your understanding of energy conservation during resonance shows real promise."
+                    ], Some("harmonic_fundamentals")),
+                    ("learning_guidance", vec![
+                        "Learning magic is like learning to see the world in a new way.",
+                        "Start with observation - watch how crystals respond to different frequencies.",
+                        "Don't rush. Understanding comes through patient practice and reflection.",
+                        "Every question you have is a step toward deeper knowledge."
+                    ], None),
+                    ("theory_fundamentals", vec![
+                        "Harmonic fundamentals are the foundation of all magical practice.",
+                        "Think of magic as waves of energy that can align and amplify each other.",
+                        "When two frequencies match, they create resonance - and that's where the magic happens.",
+                        "Energy is never created or destroyed, only transferred and transformed."
+                    ], None),
+                    ("encouragement", vec![
+                        "You're doing wonderfully! Every student progresses at their own pace.",
+                        "I've seen students with all kinds of backgrounds succeed in magical studies.",
+                        "The fact that you're asking questions shows you're thinking like a true scholar.",
+                        "Trust in your ability to learn - I certainly believe in you."
+                    ], None),
+                ]
+            ),
+            "tutorial_chamber"
+        )?;
+
         Ok(())
     }
 
