@@ -118,10 +118,13 @@ pub struct Inventory {
     pub crystals: Vec<Crystal>,
     /// Currently equipped crystal for magic use
     pub active_crystal: Option<usize>,
-    /// Other items (notes, books, artifacts)
+    /// Other items (notes, books, artifacts) - legacy system
     pub items: Vec<Item>,
     /// Currency in silver pieces
     pub silver: i32,
+    /// Enhanced item system integration
+    #[serde(default)]
+    pub enhanced_items: Option<crate::systems::items::ItemSystem>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -205,6 +208,7 @@ impl Player {
                 active_crystal: Some(0),
                 items: Vec::new(),
                 silver: 50,
+                enhanced_items: Some(crate::systems::items::ItemSystem::new()),
             },
             current_location: "tutorial_chamber".to_string(),
             playtime_minutes: 0,
@@ -732,6 +736,110 @@ impl Player {
         }
 
         resistance.min(0.4) // Cap at 40% resistance
+    }
+
+    // Enhanced Item System Integration Methods
+
+    /// Get reference to enhanced item system
+    pub fn enhanced_item_system(&self) -> Option<&crate::systems::items::ItemSystem> {
+        self.inventory.enhanced_items.as_ref()
+    }
+
+    /// Get mutable reference to enhanced item system
+    pub fn enhanced_item_system_mut(&mut self) -> Option<&mut crate::systems::items::ItemSystem> {
+        self.inventory.enhanced_items.as_mut()
+    }
+
+    /// Initialize enhanced item system if not present
+    pub fn ensure_enhanced_item_system(&mut self) {
+        if self.inventory.enhanced_items.is_none() {
+            self.inventory.enhanced_items = Some(crate::systems::items::ItemSystem::new());
+        }
+    }
+
+    /// Add an item using the enhanced system
+    pub fn add_enhanced_item(&mut self, item: crate::systems::items::core::Item) -> GameResult<()> {
+        self.ensure_enhanced_item_system();
+
+        // Extract the item system temporarily to avoid borrowing conflicts
+        if let Some(mut item_system) = self.inventory.enhanced_items.take() {
+            let result = item_system.add_item(self, item);
+            self.inventory.enhanced_items = Some(item_system);
+            result
+        } else {
+            Err(crate::GameError::InvalidInput("Enhanced item system not available".to_string()).into())
+        }
+    }
+
+    /// Remove an item using the enhanced system
+    pub fn remove_enhanced_item(&mut self, item_id: &str) -> GameResult<Option<crate::systems::items::core::Item>> {
+        if let Some(mut item_system) = self.inventory.enhanced_items.take() {
+            let result = item_system.remove_item(self, &item_id.to_string());
+            self.inventory.enhanced_items = Some(item_system);
+            result
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Use an item from the enhanced system
+    pub fn use_enhanced_item(&mut self, item_id: &str, target: Option<&str>) -> GameResult<String> {
+        if let Some(mut item_system) = self.inventory.enhanced_items.take() {
+            let result = item_system.use_item(self, &item_id.to_string(), target);
+            self.inventory.enhanced_items = Some(item_system);
+            result
+        } else {
+            Err(crate::GameError::InvalidInput("Enhanced item system not available".to_string()).into())
+        }
+    }
+
+    /// Equip an item from the enhanced system
+    pub fn equip_enhanced_item(&mut self, item_id: &str) -> GameResult<()> {
+        if let Some(mut item_system) = self.inventory.enhanced_items.take() {
+            let result = item_system.equip_item(self, &item_id.to_string());
+            self.inventory.enhanced_items = Some(item_system);
+            result
+        } else {
+            Err(crate::GameError::InvalidInput("Enhanced item system not available".to_string()).into())
+        }
+    }
+
+    /// Unequip an item from the enhanced system
+    pub fn unequip_enhanced_item(&mut self, slot: crate::systems::items::equipment::EquipmentSlot) -> GameResult<Option<String>> {
+        if let Some(mut item_system) = self.inventory.enhanced_items.take() {
+            let result = item_system.unequip_item(self, slot);
+            self.inventory.enhanced_items = Some(item_system);
+            result
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get enhanced inventory summary
+    pub fn enhanced_inventory_summary(&self) -> String {
+        if let Some(ref item_system) = self.inventory.enhanced_items {
+            item_system.get_inventory_summary()
+        } else {
+            "Enhanced item system not initialized".to_string()
+        }
+    }
+
+    /// Get equipment summary
+    pub fn equipment_summary(&self) -> String {
+        if let Some(ref item_system) = self.inventory.enhanced_items {
+            item_system.get_equipment_summary()
+        } else {
+            "No equipment system available".to_string()
+        }
+    }
+
+    /// Calculate learning bonus from equipped educational items
+    pub fn calculate_educational_item_bonus(&self, theory_id: &str, method: &crate::systems::knowledge::LearningMethod) -> f32 {
+        if let Some(ref item_system) = self.inventory.enhanced_items {
+            item_system.calculate_learning_bonus(theory_id, method)
+        } else {
+            0.0
+        }
     }
 }
 

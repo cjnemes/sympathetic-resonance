@@ -109,6 +109,21 @@ pub enum ParsedCommand {
     /// Equip a crystal
     Equip { crystal: String },
 
+    /// Use an item
+    UseItem { item: String, target: Option<String> },
+
+    /// Unequip an item
+    UnequipItem { slot: Option<String> },
+
+    /// Combine/craft items
+    CraftItem { action: String, items: Vec<String>, recipe: Option<String> },
+
+    /// Examine an item in detail
+    ExamineItem { item: String },
+
+    /// Give item to someone
+    GiveItem { item: String, target: String },
+
     /// Unknown command with suggestions
     Unknown {
         original: String,
@@ -156,6 +171,18 @@ impl CommandParser {
 
             CommandIntent::Inventory { action: _ } => {
                 CommandResult::Success(ParsedCommand::Inventory)
+            }
+
+            CommandIntent::Item { action, target, destination } => {
+                self.parse_item_command(action, target, destination)
+            }
+
+            CommandIntent::Equipment { action, item, slot } => {
+                self.parse_equipment_command(action, item, slot)
+            }
+
+            CommandIntent::Crafting { action, items, recipe } => {
+                self.parse_crafting_command(action, items, recipe)
             }
 
             CommandIntent::System { command } => {
@@ -396,6 +423,78 @@ impl CommandParser {
         }
 
         suggestions
+    }
+
+    /// Parse item interaction commands
+    fn parse_item_command(&self, action: String, target: Option<String>, destination: Option<String>) -> CommandResult {
+        match action.as_str() {
+            "take" => {
+                if let Some(item) = target {
+                    CommandResult::Success(ParsedCommand::Take { item })
+                } else {
+                    CommandResult::Error("What do you want to take?".to_string())
+                }
+            }
+            "drop" => {
+                if let Some(item) = target {
+                    CommandResult::Success(ParsedCommand::Drop { item })
+                } else {
+                    CommandResult::Error("What do you want to drop?".to_string())
+                }
+            }
+            "use" => {
+                if let Some(item) = target {
+                    CommandResult::Success(ParsedCommand::UseItem { item, target: destination })
+                } else {
+                    CommandResult::Error("What do you want to use?".to_string())
+                }
+            }
+            "give" => {
+                if let Some(item) = target {
+                    if let Some(recipient) = destination {
+                        CommandResult::Success(ParsedCommand::GiveItem { item, target: recipient })
+                    } else {
+                        CommandResult::Error("Give the item to whom?".to_string())
+                    }
+                } else {
+                    CommandResult::Error("What do you want to give?".to_string())
+                }
+            }
+            "consume" => {
+                if let Some(item) = target {
+                    CommandResult::Success(ParsedCommand::UseItem { item, target: None })
+                } else {
+                    CommandResult::Error("What do you want to consume?".to_string())
+                }
+            }
+            _ => CommandResult::Error(format!("Unknown item action: {}", action))
+        }
+    }
+
+    /// Parse equipment commands
+    fn parse_equipment_command(&self, action: String, item: Option<String>, slot: Option<String>) -> CommandResult {
+        match action.as_str() {
+            "equip" => {
+                if let Some(item_name) = item {
+                    CommandResult::Success(ParsedCommand::Equip { crystal: item_name })
+                } else {
+                    CommandResult::Error("What do you want to equip?".to_string())
+                }
+            }
+            "unequip" => {
+                CommandResult::Success(ParsedCommand::UnequipItem { slot })
+            }
+            _ => CommandResult::Error(format!("Unknown equipment action: {}", action))
+        }
+    }
+
+    /// Parse crafting commands
+    fn parse_crafting_command(&self, action: String, items: Vec<String>, recipe: Option<String>) -> CommandResult {
+        if items.is_empty() {
+            return CommandResult::Error("What items do you want to craft with?".to_string());
+        }
+
+        CommandResult::Success(ParsedCommand::CraftItem { action, items, recipe })
     }
 
     /// Parse advanced commands with multiple parameters
