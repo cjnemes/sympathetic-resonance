@@ -246,7 +246,6 @@ impl ItemSystem {
     }
 
     /// Private helper methods
-
     fn apply_item_effect(&self, player: &mut Player, effect: &ItemEffect) -> GameResult<String> {
         match effect {
             ItemEffect::RestoreEnergy(amount) => {

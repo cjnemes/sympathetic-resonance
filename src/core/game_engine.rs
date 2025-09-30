@@ -261,7 +261,7 @@ impl GameEngine {
         let dialogue_result = self.dialogue_system.talk_to_npc(npc_id, &self.player, &self.faction_system)?;
 
         // Then check for quest triggers
-        let quest_updates = self.quest_system.handle_dialogue_trigger(npc_id, topic.as_deref(), &self.player)?;
+        let quest_updates = self.quest_system.handle_dialogue_trigger(npc_id, topic, &self.player)?;
 
         // Combine results
         let mut result = dialogue_result;
