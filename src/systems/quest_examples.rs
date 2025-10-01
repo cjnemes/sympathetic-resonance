@@ -9,6 +9,7 @@
 
 use crate::systems::quests::*;
 use crate::systems::factions::FactionId;
+use crate::systems::dialogue::{NPC, NPCPersonality, QuestDialogue, DialogueTree, DialogueNode, DialogueRequirements};
 use std::collections::HashMap;
 
 /// Create the complete set of example quests for the game
@@ -1149,5 +1150,239 @@ fn create_unstable_site_investigation_quest() -> QuestDefinition {
             "crystalline_archives".to_string(),
         ],
         estimated_duration: 240,
+    }
+}
+
+/// Create NPCs with quest-aware dialogue for the example quests
+pub fn create_quest_npcs() -> Vec<NPC> {
+    vec![
+        create_tutorial_assistant(),
+        // More NPCs will be added as we expand quest content
+    ]
+}
+
+/// Create Tutorial Assistant Elara Starweaver for the "Understanding Resonance" quest
+fn create_tutorial_assistant() -> NPC {
+    let personality = NPCPersonality {
+        trait_description: "Warm, encouraging, and endlessly patient with new students. Elara radiates genuine enthusiasm for magical theory and believes every student can succeed with proper guidance.".to_string(),
+        speaking_style: vec!["encouraging".to_string(), "patient".to_string(), "enthusiastic".to_string()],
+        quirks: vec![
+            "Often uses musical metaphors when explaining resonance".to_string(),
+            "Smiles warmly when students have breakthroughs".to_string(),
+            "Hums softly when deep in thought about theory".to_string(),
+        ],
+    };
+
+    // Create quest-specific dialogue for "Understanding Resonance"
+    let mut quest_dialogue_map = HashMap::new();
+
+    let resonance_quest_dialogue = QuestDialogue {
+        quest_intro: Some(
+            "Welcome to the Practice Hall! I'm Tutorial Assistant Elara Starweaver, and I'm delighted \
+            to guide you through your first steps into the beautiful world of sympathetic resonance.\n\n\
+            Today, you'll discover something truly magical - and I mean that in both senses of the word. \
+            You'll learn that magic isn't some mysterious force that defies understanding, but rather a \
+            natural phenomenon as elegant as music itself. Every crystal, every object around us, sings \
+            its own unique frequency. Our task as practitioners is simply to learn how to listen, and \
+            then to sing in harmony.\n\n\
+            We'll start slowly, with the fundamentals. First, you'll need to study the theory of Harmonic \
+            Fundamentals - take your time with it, let the concepts settle naturally. Then, once you feel \
+            ready, we'll move to a hands-on demonstration. I'll be here if you need any guidance!".to_string()
+        ),
+
+        quest_in_progress: Some(
+            "You're doing wonderfully! I can see you're beginning to grasp how frequencies interact. \
+            Remember, there's no rush - every student learns at their own pace, and that's perfectly natural.\n\n\
+            If you're working on the theory, try to visualize the waves as they oscillate. Imagine them like \
+            ripples on a pond, spreading outward, intersecting, sometimes amplifying each other when they're \
+            in sync. That's resonance - it's when two systems find their common song.\n\n\
+            When you're ready for the demonstration, find a practice crystal and focus on matching its natural \
+            frequency. You'll feel it when you get it right - the crystal will respond with a gentle warmth, \
+            a subtle glow. It's one of my favorite moments in teaching, seeing that first connection.\n\n\
+            Feel free to ask me about 'resonance_results' when you want to discuss your progress!".to_string()
+        ),
+
+        quest_completed: Some(
+            "Oh, how wonderful! I'm so proud of you! You've achieved something truly special today - you've \
+            taken your first real step into magical understanding.\n\n\
+            I saw the way the crystal responded to you. That wasn't just technique, though your technique was \
+            excellent. That was understanding made manifest. You didn't just follow instructions - you grasped \
+            the *why* behind the practice, and that's what separates true practitioners from mere followers of recipes.\n\n\
+            This foundation you've built today will support everything else you learn. Harmonic Fundamentals isn't \
+            just one theory among many - it's the bedrock on which all other theories are built. Energy conservation, \
+            frequency matching, resonance phenomena - these principles appear everywhere in magical practice.\n\n\
+            Take this crystal - you've earned it. It's tuned specifically to your personal resonance frequency now. \
+            Treat it well, and it will serve you faithfully in your studies ahead.\n\n\
+            I look forward to hearing about your future discoveries. The path ahead of you is full of wonder!".to_string()
+        ),
+
+        objective_dialogue: {
+            let mut obj_dialogue = HashMap::new();
+
+            obj_dialogue.insert(
+                "visit_practice_hall".to_string(),
+                "Ah, you've found the Practice Hall! Isn't it beautiful? These crystals have been singing here for \
+                generations, patiently waiting to teach new students. Every scratch on these walls tells a story of \
+                discovery, every scorch mark a lesson learned. You're part of that lineage now.".to_string()
+            );
+
+            obj_dialogue.insert(
+                "learn_harmonic_fundamentals".to_string(),
+                "The theory materials are over on that shelf - take whichever tome speaks to you. Some students prefer \
+                'Resonance for Beginners' with its many diagrams, others find 'The Singing Crystal' more poetic and \
+                memorable. Both cover the same principles, just in different voices.\n\n\
+                As you study, try to *feel* the concepts, not just memorize them. When you read about wave interference, \
+                picture ocean waves merging and splitting. When you learn about frequency matching, think about how you can \
+                recognize a friend's voice in a crowd. The math is important, but the intuition is what will guide your practice.".to_string()
+            );
+
+            obj_dialogue.insert(
+                "demonstrate_resonance".to_string(),
+                "Ready for the practical demonstration? Wonderful! Here's a practice crystal - feel its weight, its \
+                temperature, its subtle vibration. Every crystal has a natural frequency, a tone at which it most easily resonates.\n\n\
+                Close your eyes if it helps. Reach out with your senses - not your physical ones, but that inner awareness you've \
+                been developing through your studies. You're looking for that sweet spot, that frequency where everything just... \
+                clicks into place.\n\n\
+                Don't worry if it takes a few tries. Even I still sometimes need to adjust my attunement. That's not failure - \
+                that's the process of learning, of fine-tuning your understanding through practice.".to_string()
+            );
+
+            obj_dialogue
+        },
+
+        progress_hints: vec![
+            "If you're finding the theory challenging, try breaking it down into smaller pieces. Start with wave basics, \
+            then move to interference patterns, then finally to resonance phenomena. Each concept builds naturally on the last.".to_string(),
+
+            "For the practical demonstration, remember that your mental state affects your ability to sense resonance. Take a \
+            deep breath, clear your mind of distractions, and approach the crystal with calm confidence.".to_string(),
+
+            "Theory and practice should reinforce each other. After studying a concept, try to observe it in the practice \
+            crystals. After a hands-on session, return to the theory to understand what you experienced.".to_string(),
+        ],
+    };
+
+    quest_dialogue_map.insert("resonance_foundation".to_string(), resonance_quest_dialogue);
+
+    // Create dialogue tree with base topics
+    let mut topics = HashMap::new();
+
+    // Topic: Resonance
+    topics.insert("resonance".to_string(), DialogueNode {
+        text_templates: vec![
+            "Resonance is the heart of magic! When two systems share compatible frequencies, energy can flow between them \
+            with remarkable efficiency. It's like... imagine two friends humming the same tune. Their voices naturally amplify \
+            each other, creating something more beautiful than either could alone.".to_string(),
+        ],
+        responses: vec![],
+        requirements: DialogueRequirements {
+            min_faction_standing: None,
+            max_faction_standing: None,
+            knowledge_requirements: vec![],
+            theory_requirements: vec![],
+            min_theory_mastery: None,
+            required_capabilities: vec![],
+        },
+    });
+
+    // Topic: Crystals
+    topics.insert("crystals".to_string(), DialogueNode {
+        text_templates: vec![
+            "Crystals are wonderful teachers! Their molecular structure creates stable, predictable frequencies - they're \
+            like tuning forks for magical practice. A well-cared-for crystal can serve a practitioner for decades, holding \
+            its resonance true through countless attunements.".to_string(),
+        ],
+        responses: vec![],
+        requirements: DialogueRequirements {
+            min_faction_standing: None,
+            max_faction_standing: None,
+            knowledge_requirements: vec![],
+            theory_requirements: vec![],
+            min_theory_mastery: None,
+            required_capabilities: vec![],
+        },
+    });
+
+    // Topic: Practice Tips
+    topics.insert("practice_tips".to_string(), DialogueNode {
+        text_templates: vec![
+            "The best practice advice I can give? Be patient with yourself. Everyone learns differently, and that's a \
+            strength, not a weakness. Some students grasp theory instantly but struggle with practical work. Others have \
+            an intuitive feel for resonance but need time to understand the underlying mathematics. Both paths lead to mastery.\n\n\
+            Also, don't underestimate rest. Your mind needs time to process and integrate new concepts. Sometimes a good \
+            night's sleep teaches you more than another hour of study.".to_string(),
+        ],
+        responses: vec![],
+        requirements: DialogueRequirements {
+            min_faction_standing: None,
+            max_faction_standing: None,
+            knowledge_requirements: vec![],
+            theory_requirements: vec![],
+            min_theory_mastery: None,
+            required_capabilities: vec![],
+        },
+    });
+
+    // Topic: Resonance Results (Quest-specific, available during quest)
+    topics.insert("resonance_results".to_string(), DialogueNode {
+        text_templates: vec![
+            "Tell me about your experience! Did you feel that moment when the crystal first responded? That's what keeps me \
+            teaching, year after year - seeing that spark of understanding in a student's eyes when theory becomes reality.\n\n\
+            What you're learning now will stay with you forever. Years from now, when you're working with advanced theories and \
+            complex applications, you'll still be relying on these fundamental principles. Harmonic Fundamentals isn't called \
+            'fundamental' for nothing!".to_string(),
+        ],
+        responses: vec![],
+        requirements: DialogueRequirements {
+            min_faction_standing: None,
+            max_faction_standing: None,
+            knowledge_requirements: vec!["harmonic_fundamentals".to_string()],
+            theory_requirements: vec![("harmonic_fundamentals".to_string(), 0.3)],
+            min_theory_mastery: None,
+            required_capabilities: vec![],
+        },
+    });
+
+    NPC {
+        id: "tutorial_assistant".to_string(),
+        name: "Elara Starweaver".to_string(),
+        description: "A warm, encouraging Tutorial Assistant with flowing robes decorated with crystalline patterns. \
+                     Her eyes sparkle with genuine enthusiasm for teaching, and she moves with the practiced grace of \
+                     someone who has spent years working in harmony with resonance crystals. She radiates patience and \
+                     the kind of deep understanding that comes from truly mastering the fundamentals.".to_string(),
+        faction_affiliation: Some(FactionId::MagistersCouncil),
+        personality: Some(personality),
+        quest_dialogue: quest_dialogue_map,
+        dialogue_tree: DialogueTree {
+            greeting: DialogueNode {
+                text_templates: vec![
+                    "Welcome, my dear student! The crystals seem particularly harmonious today - a good omen for learning!".to_string(),
+                    "Hello again! How wonderful to see you continuing your studies. The path of magical understanding is a journey worth taking.".to_string(),
+                    "Ah, another eager mind ready to discover the wonders of resonance! Please, come in, come in.".to_string(),
+                ],
+                responses: vec![],
+                requirements: DialogueRequirements {
+                    min_faction_standing: None,
+                    max_faction_standing: None,
+                    knowledge_requirements: vec![],
+                    theory_requirements: vec![],
+                    min_theory_mastery: None,
+                    required_capabilities: vec![],
+                },
+            },
+            time_based_greetings: {
+                let mut time_greetings = HashMap::new();
+                time_greetings.insert("morning".to_string(),
+                    "Good morning! The crystals are just beginning to warm with the day's energy - perfect timing for study.".to_string());
+                time_greetings.insert("afternoon".to_string(),
+                    "Good afternoon! I hope the day's lessons are treating you well.".to_string());
+                time_greetings.insert("evening".to_string(),
+                    "Good evening! Don't study too late - rest is as important as practice for true understanding.".to_string());
+                time_greetings
+            },
+            topics,
+            faction_specific: HashMap::new(),
+        },
+        current_disposition: 0,
     }
 }

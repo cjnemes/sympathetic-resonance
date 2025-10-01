@@ -1477,6 +1477,8 @@ impl DatabaseManager {
                 faction_affiliation: faction_id,
                 dialogue_tree,
                 current_disposition: 0, // Default neutral disposition
+                personality: None, // Will be populated from quest content
+                quest_dialogue: std::collections::HashMap::new(), // Will be populated from quest content
             })
         }).map_err(|e| crate::GameError::DatabaseError(format!("Failed to query NPCs: {}", e)))?;
 
