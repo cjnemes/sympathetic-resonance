@@ -1157,7 +1157,10 @@ fn create_unstable_site_investigation_quest() -> QuestDefinition {
 pub fn create_quest_npcs() -> Vec<NPC> {
     vec![
         create_tutorial_assistant(),
-        // More NPCs will be added as we expand quest content
+        create_dr_felix(),
+        create_ambassador_cordelia(),
+        create_observer_lyra(),
+        create_echo_voidwalker(),
     ]
 }
 
@@ -1381,6 +1384,363 @@ fn create_tutorial_assistant() -> NPC {
                 time_greetings
             },
             topics,
+            faction_specific: {
+                let mut faction_specific = HashMap::new();
+
+                // High Magisters' Council reputation (50+)
+                faction_specific.insert(FactionId::MagistersCouncil, DialogueNode {
+                    text_templates: vec![
+                        "Ah, a fellow Council member! It's wonderful to see dedicated students advancing through our structured curriculum. \
+                        The Council's methods have proven themselves over centuries - systematic, thorough, and always grounded in proven theory.".to_string(),
+                        "Welcome back! The Council takes great pride in students like you who demonstrate both aptitude and dedication to proper \
+                        magical study. Your progress reflects well on our educational philosophy.".to_string(),
+                        "Greetings, colleague! I'm pleased to see you're following the Council's recommended learning path. There's comfort in \
+                        knowing the methods we use have been refined by generations of masters.".to_string(),
+                    ],
+                    responses: vec![],
+                    requirements: DialogueRequirements {
+                        min_faction_standing: Some((FactionId::MagistersCouncil, 50)),
+                        max_faction_standing: None,
+                        knowledge_requirements: vec![],
+                        theory_requirements: vec![],
+                        min_theory_mastery: None,
+                        required_capabilities: vec![],
+                    },
+                });
+
+                // High Neutral Scholars reputation (40+)
+                faction_specific.insert(FactionId::NeutralScholars, DialogueNode {
+                    text_templates: vec![
+                        "Welcome, fellow seeker of knowledge! I appreciate the Scholars' approach - learning for its own sake, free from political \
+                        entanglements. There's something pure about pursuing understanding simply because it's worth understanding.".to_string(),
+                        "Ah, another independent mind! While I teach within the Council's structure, I admire those who study with open curiosity \
+                        rather than political agenda. The Scholars represent something important in our community.".to_string(),
+                        "Greetings! Your reputation among the Neutral Scholars speaks well of your dedication to genuine learning. Sometimes the \
+                        best insights come from those who study without predetermined conclusions.".to_string(),
+                    ],
+                    responses: vec![],
+                    requirements: DialogueRequirements {
+                        min_faction_standing: Some((FactionId::NeutralScholars, 40)),
+                        max_faction_standing: None,
+                        knowledge_requirements: vec![],
+                        theory_requirements: vec![],
+                        min_theory_mastery: None,
+                        required_capabilities: vec![],
+                    },
+                });
+
+                // High Underground Network reputation (30+) - concerned but still teaching
+                faction_specific.insert(FactionId::UndergroundNetwork, DialogueNode {
+                    text_templates: vec![
+                        "I... see you've been spending time with the Underground Network. *pauses thoughtfully* I won't pretend to approve of all \
+                        their methods, but I recognize that different perspectives can illuminate different truths. Please, just be careful.".to_string(),
+                        "Welcome. Your associations... concern me, I'll admit. The Council and the Underground have fundamental disagreements about \
+                        proper magical practice. But you're still a student, and I'm still a teacher. Let's focus on the knowledge itself.".to_string(),
+                        "Ah. *slight frown* Word of your Underground connections has reached the Practice Hall. I hope you're learning genuine \
+                        theory and not just... unconventional shortcuts. The fundamentals matter, regardless of who teaches them.".to_string(),
+                    ],
+                    responses: vec![],
+                    requirements: DialogueRequirements {
+                        min_faction_standing: Some((FactionId::UndergroundNetwork, 30)),
+                        max_faction_standing: None,
+                        knowledge_requirements: vec![],
+                        theory_requirements: vec![],
+                        min_theory_mastery: None,
+                        required_capabilities: vec![],
+                    },
+                });
+
+                faction_specific
+            },
+        },
+        current_disposition: 0,
+    }
+}
+
+/// Create Dr. Felix for the "Crystal Analysis Fundamentals" quest (Academic path)
+fn create_dr_felix() -> NPC {
+    let personality = NPCPersonality {
+        trait_description: "Brilliant, detail-oriented, and slightly absent-minded. Dr. Felix is passionate about pure research \
+                           and often gets lost in theoretical discussions. Values precision and intellectual rigor above all.".to_string(),
+        speaking_style: vec!["analytical".to_string(), "precise".to_string(), "academic".to_string()],
+        quirks: vec![
+            "Adjusts spectacles when making important points".to_string(),
+            "Often references obscure research papers".to_string(),
+            "Gets excited about lattice structures and crystallography".to_string(),
+        ],
+    };
+
+    let mut quest_dialogue_map = HashMap::new();
+
+    let crystal_quest_dialogue = QuestDialogue {
+        quest_intro: Some(
+            "Ah, excellent! A research assistant! *adjusts spectacles enthusiastically* Welcome to the Crystalline Research Laboratory. \
+            I'm Dr. Felix Stoneweaver, senior crystallographer with the Neutral Scholars.\n\n\
+            Crystal structures - now there's a topic worthy of a lifetime's study! The way molecular arrangements affect magical \
+            conductivity, the subtle variations in lattice geometries, the quantum interactions at the atomic level... \
+            *trails off, lost in thought*\n\n\
+            Ahem. Yes. You're here for the advanced crystal analysis project. This isn't just about using crystals as tools - \
+            anyone can do that. We're going to understand them at a fundamental level. The mathematics, the physics, the elegant \
+            geometry of it all.\n\n\
+            I hope you're prepared for rigorous study. The Neutral Scholars maintain the highest academic standards. But if you \
+            persevere, you'll gain insights that go far beyond mere practical application.".to_string()
+        ),
+        quest_in_progress: Some(
+            "How are your lattice structure analyses progressing? *peers at you intently through spectacles*\n\n\
+            Remember, precision is everything in crystallography. A single misaligned atom in the molecular matrix can alter the \
+            entire resonance profile. Take your measurements carefully, document everything, verify your results.\n\n\
+            I'm currently working on a fascinating paper about hexagonal vs. cubic crystal systems and their relative efficiency \
+            in sympathetic resonance applications. The data is quite compelling, though I suspect the review committee will \
+            quibble with my methodology. They always do. *sighs*\n\n\
+            When you're ready to discuss your findings, I'll be here. I've cleared my afternoon - well, except for the \
+            Crystallographers' Symposium at three, and the peer review meeting at four-thirty, and... where did I put my \
+            schedule?".to_string()
+        ),
+        quest_completed: Some(
+            "Remarkable work! *reviews your research with evident satisfaction* Your lattice analysis shows genuine understanding, \
+            not just rote application of formulas. You've grasped the underlying principles.\n\n\
+            *makes enthusiastic notes* This data on resonance frequency variations across different crystal geometries - \
+            excellent, excellent! I might reference this in my next publication, if you don't mind? Proper academic credit, \
+            of course. Stoneweaver and... what was your name again?\n\n\
+            *chuckles* I jest, I jest. You've earned recognition for this research. The Neutral Scholars will be pleased to \
+            count you among those who pursue knowledge for its own sake, untainted by political maneuvering or commercial interests.\n\n\
+            Keep this mindset. Pure research, rigorous methodology, peer-reviewed findings - these are the foundations of \
+            genuine scientific progress. The world needs more scholars and fewer opportunists.".to_string()
+        ),
+        objective_dialogue: {
+            let mut obj_dialogue = HashMap::new();
+            obj_dialogue.insert(
+                "academic_crystal_study".to_string(),
+                "Ah, ready for the advanced analysis? Splendid! *pulls out complex diagrams*\n\n\
+                Let's begin with hexagonal lattice structures - particularly elegant, in my opinion. Notice how the sixty-degree \
+                bond angles create natural resonance pathways... *launches into detailed technical explanation*\n\n\
+                Now, compare that to cubic structures - less aesthetically pleasing, perhaps, but with fascinating harmonic \
+                properties when stressed at specific frequencies...\n\n\
+                *several hours later* ...and that's why the relative atomic mass of the constituent elements matters so much for \
+                sustained resonance. Any questions?".to_string()
+            );
+            obj_dialogue
+        },
+        progress_hints: vec![
+            "Don't just measure - understand what you're measuring. Every data point tells a story about molecular geometry and \
+            quantum interactions. Ask yourself: why does this crystal behave this way?".to_string(),
+            "The best research comes from curiosity, not obligation. If you find yourself fascinated by crystal structures, you're \
+            on the right path. If it feels like tedious work... well, perhaps the commercial approach suits you better.".to_string(),
+        ],
+    };
+
+    quest_dialogue_map.insert("crystal_analysis".to_string(), crystal_quest_dialogue);
+
+    let mut topics = HashMap::new();
+
+    topics.insert("crystal_research".to_string(), DialogueNode {
+        text_templates: vec![
+            "Crystal research is the foundation of modern magical theory! Every advancement in the past century traces back to \
+            better understanding of crystalline structures. *becomes animated* The potential for future discoveries is limitless!".to_string(),
+        ],
+        responses: vec![],
+        requirements: DialogueRequirements {
+            min_faction_standing: None,
+            max_faction_standing: None,
+            knowledge_requirements: vec![],
+            theory_requirements: vec![],
+            min_theory_mastery: None,
+            required_capabilities: vec![],
+        },
+    });
+
+    topics.insert("academic_standards".to_string(), DialogueNode {
+        text_templates: vec![
+            "The Neutral Scholars maintain rigorous academic standards precisely because we have no political agenda. We can't \
+            afford to let ideology corrupt our research - the truth must speak for itself. *adjusts spectacles firmly*\n\n\
+            That's why peer review matters. That's why we publish our methodologies openly. That's why we welcome criticism and \
+            replication studies. Science without scrutiny is just... opinion.".to_string(),
+        ],
+        responses: vec![],
+        requirements: DialogueRequirements {
+            min_faction_standing: Some((FactionId::NeutralScholars, 20)),
+            max_faction_standing: None,
+            knowledge_requirements: vec![],
+            theory_requirements: vec![],
+            min_theory_mastery: None,
+            required_capabilities: vec![],
+        },
+    });
+
+    NPC {
+        id: "dr_felix".to_string(),
+        name: "Dr. Felix Stoneweaver".to_string(),
+        description: "A brilliant crystallographer in his late fifties, with wild gray hair and perpetually ink-stained fingers. \
+                     His spectacles are always slightly askew, and his robes are covered in chalk dust from countless hours at the \
+                     research boards. Despite his absent-minded professor demeanor, his eyes sharpen with intense focus when \
+                     discussing crystal structures or research methodology.".to_string(),
+        faction_affiliation: Some(FactionId::NeutralScholars),
+        personality: Some(personality),
+        quest_dialogue: quest_dialogue_map,
+        dialogue_tree: DialogueTree {
+            greeting: DialogueNode {
+                text_templates: vec![
+                    "Ah! A visitor! *peers over spectacles* I hope you're not here to interrupt important research... unless you're interested in lattice theory?".to_string(),
+                    "Hmm? Oh! Welcome to the laboratory. Mind the equipment - some of these crystals are quite temperamental.".to_string(),
+                    "*looks up from notes* Ah, yes, hello. Forgive the mess - organization is not my strong suit. Research is.".to_string(),
+                ],
+                responses: vec![],
+                requirements: DialogueRequirements {
+                    min_faction_standing: None,
+                    max_faction_standing: None,
+                    knowledge_requirements: vec![],
+                    theory_requirements: vec![],
+                    min_theory_mastery: None,
+                    required_capabilities: vec![],
+                },
+            },
+            time_based_greetings: HashMap::new(),
+            topics,
+            faction_specific: {
+                let mut faction_specific = HashMap::new();
+
+                // High Neutral Scholars reputation
+                faction_specific.insert(FactionId::NeutralScholars, DialogueNode {
+                    text_templates: vec![
+                        "Ah, a fellow Scholar! *brightens considerably* It's refreshing to speak with someone who values knowledge for its own sake. \
+                        Come, let me show you my latest findings!".to_string(),
+                    ],
+                    responses: vec![],
+                    requirements: DialogueRequirements {
+                        min_faction_standing: Some((FactionId::NeutralScholars, 40)),
+                        max_faction_standing: None,
+                        knowledge_requirements: vec![],
+                        theory_requirements: vec![],
+                        min_theory_mastery: None,
+                        required_capabilities: vec![],
+                    },
+                });
+
+                // High Industrial Consortium reputation - disapproving
+                faction_specific.insert(FactionId::IndustrialConsortium, DialogueNode {
+                    text_templates: vec![
+                        "*eyes narrow slightly* You work with the Consortium, I hear. I hope you're not here to ask me to compromise \
+                        research integrity for commercial applications. I've had quite enough of that pressure.".to_string(),
+                    ],
+                    responses: vec![],
+                    requirements: DialogueRequirements {
+                        min_faction_standing: Some((FactionId::IndustrialConsortium, 40)),
+                        max_faction_standing: None,
+                        knowledge_requirements: vec![],
+                        theory_requirements: vec![],
+                        min_theory_mastery: None,
+                        required_capabilities: vec![],
+                    },
+                });
+
+                faction_specific
+            },
+        },
+        current_disposition: 0,
+    }
+}
+/// Create Ambassador Cordelia for the "Diplomatic Balance" quest
+fn create_ambassador_cordelia() -> NPC {
+    let personality = NPCPersonality {
+        trait_description: "Diplomatic, measured, and keenly observant. Sees all sides of conflicts.".to_string(),
+        speaking_style: vec!["diplomatic".to_string(), "measured".to_string()],
+        quirks: vec!["Pauses thoughtfully before responding".to_string()],
+    };
+
+    NPC {
+        id: "ambassador_cordelia".to_string(),
+        name: "Ambassador Cordelia".to_string(),
+        description: "An elegant diplomat with a reputation for fairness and neutrality.".to_string(),
+        faction_affiliation: Some(FactionId::NeutralScholars),
+        personality: Some(personality),
+        quest_dialogue: HashMap::new(),
+        dialogue_tree: DialogueTree {
+            greeting: DialogueNode {
+                text_templates: vec!["Welcome. I hope we can find common ground.".to_string()],
+                responses: vec![],
+                requirements: DialogueRequirements {
+                    min_faction_standing: None,
+                    max_faction_standing: None,
+                    knowledge_requirements: vec![],
+                    theory_requirements: vec![],
+                    min_theory_mastery: None,
+                    required_capabilities: vec![],
+                },
+            },
+            time_based_greetings: HashMap::new(),
+            topics: HashMap::new(),
+            faction_specific: HashMap::new(),
+        },
+        current_disposition: 0,
+    }
+}
+
+/// Create Observer Lyra for the "Diplomatic Balance" quest (Magisters' Council)
+fn create_observer_lyra() -> NPC {
+    let personality = NPCPersonality {
+        trait_description: "Formal, traditional, values order and structure.".to_string(),
+        speaking_style: vec!["formal".to_string(), "authoritative".to_string()],
+        quirks: vec!["References Council precedents frequently".to_string()],
+    };
+
+    NPC {
+        id: "observer_lyra".to_string(),
+        name: "Observer Lyra".to_string(),
+        description: "A stern Council observer who upholds traditional magical governance.".to_string(),
+        faction_affiliation: Some(FactionId::MagistersCouncil),
+        personality: Some(personality),
+        quest_dialogue: HashMap::new(),
+        dialogue_tree: DialogueTree {
+            greeting: DialogueNode {
+                text_templates: vec!["The Council values order and proper procedure.".to_string()],
+                responses: vec![],
+                requirements: DialogueRequirements {
+                    min_faction_standing: None,
+                    max_faction_standing: None,
+                    knowledge_requirements: vec![],
+                    theory_requirements: vec![],
+                    min_theory_mastery: None,
+                    required_capabilities: vec![],
+                },
+            },
+            time_based_greetings: HashMap::new(),
+            topics: HashMap::new(),
+            faction_specific: HashMap::new(),
+        },
+        current_disposition: 0,
+    }
+}
+
+/// Create Echo Voidwalker for the "Diplomatic Balance" quest (Underground Network)
+fn create_echo_voidwalker() -> NPC {
+    let personality = NPCPersonality {
+        trait_description: "Mysterious, anti-authoritarian, values freedom and innovation.".to_string(),
+        speaking_style: vec!["cryptic".to_string(), "rebellious".to_string()],
+        quirks: vec!["Speaks in riddles sometimes".to_string()],
+    };
+
+    NPC {
+        id: "echo_voidwalker".to_string(),
+        name: "Echo Voidwalker".to_string(),
+        description: "An enigmatic member of the Underground Network who questions all authority.".to_string(),
+        faction_affiliation: Some(FactionId::UndergroundNetwork),
+        personality: Some(personality),
+        quest_dialogue: HashMap::new(),
+        dialogue_tree: DialogueTree {
+            greeting: DialogueNode {
+                text_templates: vec!["The shadows hold more truth than the Council's light.".to_string()],
+                responses: vec![],
+                requirements: DialogueRequirements {
+                    min_faction_standing: None,
+                    max_faction_standing: None,
+                    knowledge_requirements: vec![],
+                    theory_requirements: vec![],
+                    min_theory_mastery: None,
+                    required_capabilities: vec![],
+                },
+            },
+            time_based_greetings: HashMap::new(),
+            topics: HashMap::new(),
             faction_specific: HashMap::new(),
         },
         current_disposition: 0,

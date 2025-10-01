@@ -41,6 +41,106 @@ fn test_tutorial_assistant_creation() {
 }
 
 #[test]
+fn test_all_quest_npcs_created() {
+    let npcs = create_quest_npcs();
+
+    // Phase 1B should create 5 NPCs total
+    assert_eq!(npcs.len(), 5, "Should create 5 quest NPCs");
+
+    let expected_npcs = vec![
+        "tutorial_assistant",
+        "dr_felix",
+        "ambassador_cordelia",
+        "observer_lyra",
+        "echo_voidwalker",
+    ];
+
+    for expected_id in expected_npcs {
+        assert!(
+            npcs.iter().any(|npc| npc.id == expected_id),
+            "Missing NPC: {}",
+            expected_id
+        );
+    }
+}
+
+#[test]
+fn test_faction_affiliations() {
+    let npcs = create_quest_npcs();
+
+    let tutorial_assistant = npcs.iter().find(|npc| npc.id == "tutorial_assistant").unwrap();
+    assert_eq!(tutorial_assistant.faction_affiliation, Some(sympathetic_resonance::systems::factions::FactionId::MagistersCouncil));
+
+    let dr_felix = npcs.iter().find(|npc| npc.id == "dr_felix").unwrap();
+    assert_eq!(dr_felix.faction_affiliation, Some(sympathetic_resonance::systems::factions::FactionId::NeutralScholars));
+
+    let observer_lyra = npcs.iter().find(|npc| npc.id == "observer_lyra").unwrap();
+    assert_eq!(observer_lyra.faction_affiliation, Some(sympathetic_resonance::systems::factions::FactionId::MagistersCouncil));
+
+    let echo_voidwalker = npcs.iter().find(|npc| npc.id == "echo_voidwalker").unwrap();
+    assert_eq!(echo_voidwalker.faction_affiliation, Some(sympathetic_resonance::systems::factions::FactionId::UndergroundNetwork));
+}
+
+#[test]
+fn test_tutorial_assistant_has_faction_dialogue() {
+    let npcs = create_quest_npcs();
+    let tutorial_assistant = npcs.iter()
+        .find(|npc| npc.id == "tutorial_assistant")
+        .unwrap();
+
+    let faction_specific = &tutorial_assistant.dialogue_tree.faction_specific;
+
+    // Should have faction-specific greetings for 3 factions
+    assert!(faction_specific.contains_key(&sympathetic_resonance::systems::factions::FactionId::MagistersCouncil));
+    assert!(faction_specific.contains_key(&sympathetic_resonance::systems::factions::FactionId::NeutralScholars));
+    assert!(faction_specific.contains_key(&sympathetic_resonance::systems::factions::FactionId::UndergroundNetwork));
+}
+
+#[test]
+fn test_dr_felix_has_personality() {
+    let npcs = create_quest_npcs();
+    let dr_felix = npcs.iter()
+        .find(|npc| npc.id == "dr_felix")
+        .unwrap();
+
+    assert!(dr_felix.personality.is_some());
+
+    let personality = dr_felix.personality.as_ref().unwrap();
+    assert!(personality.speaking_style.contains(&"analytical".to_string()));
+    assert!(!personality.quirks.is_empty());
+}
+
+#[test]
+fn test_dr_felix_has_quest_dialogue() {
+    let npcs = create_quest_npcs();
+    let dr_felix = npcs.iter()
+        .find(|npc| npc.id == "dr_felix")
+        .unwrap();
+
+    // Should have dialogue for crystal_analysis quest
+    assert!(dr_felix.quest_dialogue.contains_key("crystal_analysis"));
+
+    let quest_dialogue = &dr_felix.quest_dialogue["crystal_analysis"];
+    assert!(quest_dialogue.quest_intro.is_some());
+    assert!(quest_dialogue.quest_in_progress.is_some());
+    assert!(quest_dialogue.quest_completed.is_some());
+}
+
+#[test]
+fn test_dr_felix_faction_specific_dialogue() {
+    let npcs = create_quest_npcs();
+    let dr_felix = npcs.iter()
+        .find(|npc| npc.id == "dr_felix")
+        .unwrap();
+
+    let faction_specific = &dr_felix.dialogue_tree.faction_specific;
+
+    // Dr. Felix should have opinions about Scholars and Consortium
+    assert!(faction_specific.contains_key(&sympathetic_resonance::systems::factions::FactionId::NeutralScholars));
+    assert!(faction_specific.contains_key(&sympathetic_resonance::systems::factions::FactionId::IndustrialConsortium));
+}
+
+#[test]
 fn test_tutorial_assistant_personality() {
     let npcs = create_quest_npcs();
     let tutorial_assistant = npcs.iter()
