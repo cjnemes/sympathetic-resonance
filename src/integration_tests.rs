@@ -55,6 +55,8 @@ fn test_faction_dialogue_integration() -> GameResult<()> {
         name: "Council Magistrate".to_string(),
         description: "A high-ranking member of the Magisters Council".to_string(),
         faction_affiliation: Some(FactionId::MagistersCouncil),
+        personality: None,
+        quest_dialogue: HashMap::new(),
         dialogue_tree: DialogueTree {
             greeting: DialogueNode {
                 text_templates: vec![
@@ -72,6 +74,7 @@ fn test_faction_dialogue_integration() -> GameResult<()> {
                     required_capabilities: vec![],
                 },
             },
+            time_based_greetings: HashMap::new(),
             topics: {
                 let mut topics = HashMap::new();
                 topics.insert("council_business".to_string(), DialogueNode {
@@ -163,6 +166,8 @@ fn test_performance_integration() -> GameResult<()> {
             name: "Performance NPC".to_string(),
             description: "For performance testing".to_string(),
             faction_affiliation: Some(FactionId::MagistersCouncil),
+            personality: None,
+            quest_dialogue: HashMap::new(),
             dialogue_tree: DialogueTree {
                 greeting: DialogueNode {
                     text_templates: vec!["Hello".to_string()],
@@ -176,6 +181,7 @@ fn test_performance_integration() -> GameResult<()> {
                         required_capabilities: vec![],
                     },
                 },
+                time_based_greetings: HashMap::new(),
                 topics: HashMap::new(),
                 faction_specific: HashMap::new(),
             },

@@ -5,6 +5,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NPCPersonality {
+    /// Brief description of personality (e.g., "Warm and encouraging")
+    pub trait_description: String,
+    /// Speaking style markers (e.g., "formal", "casual", "enthusiastic")
+    pub speaking_style: Vec<String>,
+    /// Character quirks or signature phrases
+    pub quirks: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NPC {
     pub id: String,
     pub name: String,
@@ -12,6 +22,28 @@ pub struct NPC {
     pub faction_affiliation: Option<FactionId>,
     pub dialogue_tree: DialogueTree,
     pub current_disposition: i32, // -100 to 100
+    /// Personality traits and speaking style
+    #[serde(default)]
+    pub personality: Option<NPCPersonality>,
+    /// Quest-specific dialogue contexts (quest_id -> dialogue content)
+    #[serde(default)]
+    pub quest_dialogue: std::collections::HashMap<String, QuestDialogue>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QuestDialogue {
+    /// Dialogue when quest is first offered/introduced
+    pub quest_intro: Option<String>,
+    /// Dialogue when player is working on the quest
+    pub quest_in_progress: Option<String>,
+    /// Dialogue when quest is completed
+    pub quest_completed: Option<String>,
+    /// Dialogue for specific quest objectives (objective_id -> dialogue)
+    #[serde(default)]
+    pub objective_dialogue: HashMap<String, String>,
+    /// Encouragement/hints based on player progress
+    #[serde(default)]
+    pub progress_hints: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,6 +51,9 @@ pub struct DialogueTree {
     pub greeting: DialogueNode,
     pub topics: HashMap<String, DialogueNode>,
     pub faction_specific: HashMap<FactionId, DialogueNode>,
+    /// Time-of-day variations for greeting (optional)
+    #[serde(default)]
+    pub time_based_greetings: HashMap<String, String>, // "morning", "afternoon", "evening"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,6 +115,57 @@ impl DialogueSystem {
 
     pub fn add_npc(&mut self, npc: NPC) {
         self.npcs.insert(npc.id.clone(), npc);
+    }
+
+    /// Get quest-specific dialogue for an NPC
+    pub fn get_quest_dialogue(
+        &self,
+        npc_id: &str,
+        quest_id: &str,
+        quest_status: &str, // "intro", "in_progress", "completed"
+    ) -> Option<String> {
+        if let Some(npc) = self.npcs.get(npc_id) {
+            if let Some(quest_dialogue) = npc.quest_dialogue.get(quest_id) {
+                match quest_status {
+                    "intro" => quest_dialogue.quest_intro.clone(),
+                    "in_progress" => quest_dialogue.quest_in_progress.clone(),
+                    "completed" => quest_dialogue.quest_completed.clone(),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Get a random progress hint for a quest
+    pub fn get_progress_hint(&self, npc_id: &str, quest_id: &str) -> Option<String> {
+        if let Some(npc) = self.npcs.get(npc_id) {
+            if let Some(quest_dialogue) = npc.quest_dialogue.get(quest_id) {
+                if !quest_dialogue.progress_hints.is_empty() {
+                    // For now, return the first hint. Could randomize in future.
+                    return Some(quest_dialogue.progress_hints[0].clone());
+                }
+            }
+        }
+        None
+    }
+
+    /// Get dialogue for a specific quest objective
+    pub fn get_objective_dialogue(
+        &self,
+        npc_id: &str,
+        quest_id: &str,
+        objective_id: &str,
+    ) -> Option<String> {
+        if let Some(npc) = self.npcs.get(npc_id) {
+            if let Some(quest_dialogue) = npc.quest_dialogue.get(quest_id) {
+                return quest_dialogue.objective_dialogue.get(objective_id).cloned();
+            }
+        }
+        None
     }
 
     pub fn talk_to_npc(
@@ -472,6 +558,12 @@ mod tests {
             name: "Test Merchant".to_string(),
             description: "A friendly merchant for testing".to_string(),
             faction_affiliation: Some(FactionId::IndustrialConsortium),
+            personality: Some(NPCPersonality {
+                trait_description: "Pragmatic and business-minded".to_string(),
+                speaking_style: vec!["casual".to_string(), "direct".to_string()],
+                quirks: vec!["Often mentions profit margins".to_string()],
+            }),
+            quest_dialogue: HashMap::new(),
             dialogue_tree: DialogueTree {
                 greeting: DialogueNode {
                     text_templates: vec![
@@ -489,6 +581,7 @@ mod tests {
                         required_capabilities: vec![],
                     },
                 },
+                time_based_greetings: HashMap::new(),
                 topics: {
                     let mut topics = HashMap::new();
                     topics.insert("trade".to_string(), DialogueNode {
@@ -556,6 +649,8 @@ mod tests {
             name: "Scholar Eldara".to_string(),
             description: "An independent researcher".to_string(),
             faction_affiliation: None,
+            personality: None,
+            quest_dialogue: HashMap::new(),
             dialogue_tree: DialogueTree {
                 greeting: DialogueNode {
                     text_templates: vec![
@@ -573,6 +668,7 @@ mod tests {
                         required_capabilities: vec![],
                     },
                 },
+                time_based_greetings: HashMap::new(),
                 topics: {
                     let mut topics = HashMap::new();
                     topics.insert("research".to_string(), DialogueNode {
@@ -605,6 +701,8 @@ mod tests {
             name: "Shadow".to_string(),
             description: "A suspicious figure".to_string(),
             faction_affiliation: Some(FactionId::UndergroundNetwork),
+            personality: None,
+            quest_dialogue: HashMap::new(),
             dialogue_tree: DialogueTree {
                 greeting: DialogueNode {
                     text_templates: vec![
@@ -622,6 +720,7 @@ mod tests {
                         required_capabilities: vec![],
                     },
                 },
+                time_based_greetings: HashMap::new(),
                 topics: {
                     let mut topics = HashMap::new();
                     topics.insert("operations".to_string(), DialogueNode {
