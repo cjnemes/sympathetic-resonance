@@ -100,6 +100,9 @@ pub enum ParsedCommand {
     /// Abandon a quest
     QuestAbandon { quest_id: String },
 
+    /// Make a quest choice
+    QuestChoice { quest_id: String, choice_id: String, option_id: String },
+
     /// Take an item
     Take { item: String },
 
@@ -274,6 +277,11 @@ impl CommandParser {
             ["quest", "status", quest_id] => CommandResult::Success(ParsedCommand::QuestStatus { quest_id: quest_id.to_string() }),
             ["quest", "start", quest_id] => CommandResult::Success(ParsedCommand::QuestStart { quest_id: quest_id.to_string() }),
             ["quest", "abandon", quest_id] => CommandResult::Success(ParsedCommand::QuestAbandon { quest_id: quest_id.to_string() }),
+            ["quest", "choose", quest_id, choice_id, option_id] => CommandResult::Success(ParsedCommand::QuestChoice {
+                quest_id: quest_id.to_string(),
+                choice_id: choice_id.to_string(),
+                option_id: option_id.to_string()
+            }),
 
             _ => CommandResult::Error(format!("Unknown system command: {}", command)),
         }
@@ -335,6 +343,7 @@ impl CommandParser {
                  • quest active - Show your active quests\n\
                  • quest info <id> - Show detailed quest information\n\
                  • quest status <id> - Show quest progress\n\
+                 • quest choose <quest_id> <choice_id> <option_id> - Make a quest choice\n\
                  • quest start <id> - Start a quest\n\
                  • quest abandon <id> - Abandon a quest\n\
                  • quest recommendations - Get quest suggestions\n\n\

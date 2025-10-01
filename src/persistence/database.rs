@@ -1623,6 +1623,7 @@ impl DatabaseManager {
                 faction_effects,
                 educational_focus,
                 branching_paths,
+                choices: vec![], // Not stored in database yet
                 involved_npcs,
                 locations,
                 estimated_duration,

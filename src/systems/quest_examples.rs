@@ -185,10 +185,152 @@ fn create_resonance_foundation_quest() -> QuestDefinition {
         },
 
         branching_paths: HashMap::new(), // Simple linear quest for beginners
+        choices: create_resonance_foundation_choices(),
         involved_npcs: vec!["tutorial_assistant".to_string()],
         locations: vec!["practice_hall".to_string(), "tutorial_chamber".to_string()],
         estimated_duration: 45,
     }
+}
+
+/// Create quest choices for resonance foundation quest
+fn create_resonance_foundation_choices() -> Vec<QuestChoice> {
+    vec![
+        QuestChoice {
+            id: "demonstration_approach".to_string(),
+            prompt: "How do you want to approach your resonance demonstration?".to_string(),
+            description: "Elara smiles encouragingly as you prepare for your demonstration. \
+                         'There are many ways to show understanding,' she says. 'Some students prefer \
+                         careful precision, others embrace creative experimentation. What feels right to you?'".to_string(),
+            options: vec![
+                ChoiceOption {
+                    id: "methodical_approach".to_string(),
+                    text: "Take the methodical approach - follow established procedures carefully".to_string(),
+                    description: "Apply theoretical principles step-by-step, ensuring each frequency \
+                                 adjustment is precise and documented. This demonstrates mastery of \
+                                 traditional methods.".to_string(),
+                    requirements: Some(ChoiceRequirements {
+                        theory_requirements: vec![("harmonic_fundamentals".to_string(), 0.3)],
+                        faction_requirements: vec![],
+                        item_requirements: vec![],
+                    }),
+                    outcome: QuestOutcome {
+                        outcome_type: OutcomeType::Success,
+                        experience_modifier: 1.2,
+                        faction_changes: {
+                            let mut changes = HashMap::new();
+                            changes.insert(FactionId::MagistersCouncil, 3);
+                            changes.insert(FactionId::NeutralScholars, 2);
+                            changes
+                        },
+                        theory_insights: {
+                            let mut insights = HashMap::new();
+                            insights.insert("harmonic_fundamentals".to_string(), 0.05);
+                            insights
+                        },
+                        item_changes: vec![],
+                        narrative_result: "Your methodical approach pays off beautifully. Each frequency \
+                                          adjustment flows smoothly into the next, the crystal's response \
+                                          building in a perfect crescendo of harmonic resonance. Elara nods \
+                                          approvingly, noting your precise technique in her records.".to_string(),
+                        npc_reactions: {
+                            let mut reactions = HashMap::new();
+                            reactions.insert("tutorial_assistant".to_string(),
+                                "Excellent precision! Your methodical approach shows real understanding \
+                                 of the underlying principles. The Magisters' Council values such \
+                                 disciplined technique.".to_string());
+                            reactions
+                        },
+                        content_unlocks: vec![],
+                    },
+                },
+                ChoiceOption {
+                    id: "intuitive_approach".to_string(),
+                    text: "Trust your intuition - feel the frequencies and let your senses guide you".to_string(),
+                    description: "Rather than following rigid procedures, attune yourself to the crystal's \
+                                 natural harmonics and respond organically. This shows innate resonance sensitivity.".to_string(),
+                    requirements: Some(ChoiceRequirements {
+                        theory_requirements: vec![("harmonic_fundamentals".to_string(), 0.25)],
+                        faction_requirements: vec![],
+                        item_requirements: vec![],
+                    }),
+                    outcome: QuestOutcome {
+                        outcome_type: OutcomeType::AlternativeSuccess,
+                        experience_modifier: 1.1,
+                        faction_changes: {
+                            let mut changes = HashMap::new();
+                            changes.insert(FactionId::UndergroundNetwork, 4);
+                            changes.insert(FactionId::NeutralScholars, 1);
+                            changes
+                        },
+                        theory_insights: {
+                            let mut insights = HashMap::new();
+                            insights.insert("harmonic_fundamentals".to_string(), 0.03);
+                            insights
+                        },
+                        item_changes: vec![],
+                        narrative_result: "You close your eyes and let your senses extend into the crystal. \
+                                          The frequencies come to you not as numbers but as feelings - a warmth \
+                                          here, a cool resonance there. The demonstration succeeds through pure \
+                                          intuition. Elara's eyes widen with interest at your natural talent.".to_string(),
+                        npc_reactions: {
+                            let mut reactions = HashMap::new();
+                            reactions.insert("tutorial_assistant".to_string(),
+                                "Fascinating! You have a natural sensitivity to resonance fields. While \
+                                 unconventional, your intuitive approach reveals genuine connection to \
+                                 the sympathetic harmonics. Some students take years to develop that kind \
+                                 of attunement.".to_string());
+                            reactions
+                        },
+                        content_unlocks: vec!["intuitive_resonance_trait".to_string()],
+                    },
+                },
+                ChoiceOption {
+                    id: "experimental_approach".to_string(),
+                    text: "Try something experimental - test the boundaries of what you've learned".to_string(),
+                    description: "Use this demonstration as an opportunity to explore beyond the standard \
+                                 curriculum. Test a hypothesis or try a novel frequency combination.".to_string(),
+                    requirements: Some(ChoiceRequirements {
+                        theory_requirements: vec![("harmonic_fundamentals".to_string(), 0.35)],
+                        faction_requirements: vec![],
+                        item_requirements: vec![],
+                    }),
+                    outcome: QuestOutcome {
+                        outcome_type: OutcomeType::Mixed,
+                        experience_modifier: 1.3,
+                        faction_changes: {
+                            let mut changes = HashMap::new();
+                            changes.insert(FactionId::NeutralScholars, 5);
+                            changes.insert(FactionId::MagistersCouncil, -2);
+                            changes
+                        },
+                        theory_insights: {
+                            let mut insights = HashMap::new();
+                            insights.insert("harmonic_fundamentals".to_string(), 0.08);
+                            insights
+                        },
+                        item_changes: vec![],
+                        narrative_result: "Your experimental approach produces unexpected results - the crystal \
+                                          resonates in patterns not described in the standard texts. While you \
+                                          achieve the demonstration's goals, you also discover something new. \
+                                          Elara looks both impressed and slightly concerned at your unconventional \
+                                          methods.".to_string(),
+                        npc_reactions: {
+                            let mut reactions = HashMap::new();
+                            reactions.insert("tutorial_assistant".to_string(),
+                                "Well... that was certainly not in the curriculum! *adjusts her notes with \
+                                 a mixture of excitement and concern* You've discovered something interesting, \
+                                 but be careful - the Council doesn't always appreciate deviation from \
+                                 established procedures. The Scholars, however, will want to hear about this.".to_string());
+                            reactions
+                        },
+                        content_unlocks: vec!["experimental_resonance_notes".to_string()],
+                    },
+                },
+            ],
+            prerequisite_objective: Some("learn_harmonic_fundamentals".to_string()),
+            required: true,
+        },
+    ]
 }
 
 /// Quest 2: "Crystal Analysis Project" - Intermediate Level
@@ -484,6 +626,7 @@ fn create_crystal_analysis_quest() -> QuestDefinition {
         },
 
         branching_paths,
+        choices: vec![], // Will be added in Phase 1C
         involved_npcs: vec!["dr_felix".to_string(), "technician_marcus".to_string()],
         locations: vec!["crystal_garden_lab".to_string(), "resonance_observatory".to_string()],
         estimated_duration: 90,
@@ -664,6 +807,7 @@ fn create_diplomatic_balance_quest() -> QuestDefinition {
         },
 
         branching_paths: HashMap::new(), // Could add complex negotiation branches
+        choices: vec![], // Will be added in future phases
         involved_npcs: vec![
             "ambassador_cordelia".to_string(),
             "observer_lyra".to_string(),
@@ -880,6 +1024,7 @@ fn create_healing_research_quest() -> QuestDefinition {
         },
 
         branching_paths: HashMap::new(), // Could add different healing specializations
+        choices: vec![], // Will be added in future phases
         involved_npcs: vec!["healer_seraphina".to_string(), "dr_felix".to_string()],
         locations: vec!["crystal_garden_lab".to_string()],
         estimated_duration: 150,
@@ -1139,6 +1284,7 @@ fn create_unstable_site_investigation_quest() -> QuestDefinition {
         },
 
         branching_paths: HashMap::new(), // Could add different approaches to stabilization
+        choices: vec![], // Will be added in future phases
         involved_npcs: vec![
             "warden_gareth".to_string(),
             "captain_vera".to_string(),
