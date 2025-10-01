@@ -163,11 +163,7 @@ impl CommandHandler for DefaultCommandHandler {
             }
 
             ParsedCommand::UnequipItem { slot } => {
-                if let Some(slot_name) = slot {
-                    Ok(format!("Unequip from {} slot not yet implemented.", slot_name))
-                } else {
-                    Ok("Unequip functionality not yet implemented.".to_string())
-                }
+                handle_unequip(slot, player)
             }
 
             ParsedCommand::CraftItem { action, items, recipe } => {
@@ -953,6 +949,100 @@ fn handle_drop(item_name: String, player: &mut Player, world: &mut WorldState) -
         }
         Ok(None) => Err(crate::GameError::InvalidInput("Item not found".to_string()).into()),
         Err(e) => Err(e.into()),
+    }
+}
+
+/// Handle unequip command
+fn handle_unequip(slot_name: Option<String>, player: &mut Player) -> GameResult<String> {
+    // Ensure player has enhanced item system
+    player.ensure_enhanced_item_system();
+
+    let item_system = player.inventory.enhanced_items.as_mut()
+        .ok_or_else(|| crate::GameError::InvalidCommand("Item system not available".to_string()))?;
+
+    // If no slot specified, show help
+    let slot_str = slot_name.ok_or_else(|| crate::GameError::InvalidInput(
+        "Please specify a slot to unequip (e.g., 'unequip head', 'unequip ring1')".to_string()
+    ))?;
+
+    // Parse slot name
+    let slot = parse_equipment_slot(&slot_str)?;
+
+    // Check if slot is occupied
+    if !item_system.equipment_manager.is_slot_occupied(slot.clone()) {
+        return Ok(format!("Nothing is equipped in the {} slot.", slot_display_name(&slot)));
+    }
+
+    // Check if inventory has space
+    let current_slots = item_system.inventory_manager.current_slots();
+    let max_slots = item_system.inventory_manager.constraints.max_slots;
+    if current_slots >= max_slots {
+        return Err(crate::GameError::InvalidCommand(
+            "Your inventory is full. You need to drop something before unequipping.".to_string()
+        ).into());
+    }
+
+    // Unequip the item
+    match item_system.equipment_manager.unequip_item(slot.clone()) {
+        Ok(Some((item_id, _equipment))) => {
+            // Get the item from inventory to add back
+            if let Some(item) = item_system.inventory_manager.get_item(&item_id) {
+                let item_name = item.properties.name.clone();
+
+                // Item is already in inventory_manager, just need to confirm
+                Ok(format!("You unequip the {} from your {} slot.", item_name, slot_display_name(&slot)))
+            } else {
+                // This shouldn't happen, but handle gracefully
+                Ok(format!("You unequip an item from your {} slot.", slot_display_name(&slot)))
+            }
+        }
+        Ok(None) => {
+            Ok(format!("Nothing is equipped in the {} slot.", slot_display_name(&slot)))
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// Parse equipment slot from string
+fn parse_equipment_slot(slot_str: &str) -> GameResult<crate::systems::items::equipment::EquipmentSlot> {
+    use crate::systems::items::equipment::EquipmentSlot;
+
+    match slot_str.to_lowercase().as_str() {
+        "head" => Ok(EquipmentSlot::Head),
+        "neck" => Ok(EquipmentSlot::Neck),
+        "chest" => Ok(EquipmentSlot::Chest),
+        "hands" | "hand" | "gloves" => Ok(EquipmentSlot::Hands),
+        "ring1" | "ring 1" | "leftring" | "left ring" => Ok(EquipmentSlot::Ring1),
+        "ring2" | "ring 2" | "rightring" | "right ring" => Ok(EquipmentSlot::Ring2),
+        "waist" | "belt" => Ok(EquipmentSlot::Waist),
+        "legs" | "leg" | "pants" => Ok(EquipmentSlot::Legs),
+        "feet" | "foot" | "boots" | "shoes" => Ok(EquipmentSlot::Feet),
+        "mainhand" | "main hand" | "weapon" => Ok(EquipmentSlot::MainHand),
+        "offhand" | "off hand" | "shield" => Ok(EquipmentSlot::OffHand),
+        "back" | "cloak" | "cape" => Ok(EquipmentSlot::Back),
+        _ => Err(crate::GameError::InvalidInput(
+            format!("Unknown equipment slot '{}'. Valid slots: head, neck, chest, hands, ring1, ring2, waist, legs, feet, mainhand, offhand, back", slot_str)
+        ).into()),
+    }
+}
+
+/// Get display name for equipment slot
+fn slot_display_name(slot: &crate::systems::items::equipment::EquipmentSlot) -> &str {
+    use crate::systems::items::equipment::EquipmentSlot;
+
+    match slot {
+        EquipmentSlot::Head => "head",
+        EquipmentSlot::Neck => "neck",
+        EquipmentSlot::Chest => "chest",
+        EquipmentSlot::Hands => "hands",
+        EquipmentSlot::Ring1 => "ring1",
+        EquipmentSlot::Ring2 => "ring2",
+        EquipmentSlot::Waist => "waist",
+        EquipmentSlot::Legs => "legs",
+        EquipmentSlot::Feet => "feet",
+        EquipmentSlot::MainHand => "main hand",
+        EquipmentSlot::OffHand => "off hand",
+        EquipmentSlot::Back => "back",
     }
 }
 
