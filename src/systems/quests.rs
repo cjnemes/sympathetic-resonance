@@ -574,6 +574,59 @@ impl QuestSystem {
         }
     }
 
+    /// Abandon an active quest
+    pub fn abandon_quest(&mut self, quest_id: &str, faction_system: &mut FactionSystem) -> GameResult<String> {
+        // Check if quest exists
+        let quest_def = self.quest_definitions.get(quest_id)
+            .ok_or_else(|| crate::GameError::ContentNotFound(format!("Quest '{}' not found", quest_id)))?;
+
+        // Check if player has this quest active
+        let progress = self.player_progress.get_mut(quest_id)
+            .ok_or_else(|| crate::GameError::InvalidCommand(format!("You haven't started the quest '{}'", quest_def.title)))?;
+
+        // Can only abandon quests that are in progress
+        if progress.status != QuestStatus::InProgress {
+            return Err(crate::GameError::InvalidCommand(
+                format!("Cannot abandon quest '{}' with status {:?}", quest_def.title, progress.status)
+            ).into());
+        }
+
+        // Tutorial quests cannot be abandoned
+        if quest_def.category == QuestCategory::Tutorial {
+            return Err(crate::GameError::InvalidCommand(
+                "Tutorial quests cannot be abandoned. Please complete them to learn the game.".to_string()
+            ).into());
+        }
+
+        // Mark as abandoned
+        progress.status = QuestStatus::Abandoned;
+        progress.completed_at = Some(Utc::now());
+
+        let mut result = format!("You have abandoned the quest: {}\n\n", quest_def.title);
+
+        // Apply faction reputation penalties if appropriate
+        let mut total_penalty = 0;
+        for (faction_id, effect) in &quest_def.faction_effects {
+            // Only apply penalty if the effect was positive (they were expecting you to help)
+            if *effect > 0 {
+                let penalty = -(*effect / 2); // Penalty is half the reward
+                faction_system.modify_reputation(*faction_id, penalty);
+                total_penalty += penalty.abs();
+
+                result.push_str(&format!("• {:?} faction reputation: {} (abandonment penalty)\n",
+                    faction_id, penalty));
+            }
+        }
+
+        if total_penalty == 0 {
+            result.push_str("No faction reputation penalties.\n");
+        }
+
+        result.push_str("\nThe quest may become available again in the future.");
+
+        Ok(result)
+    }
+
     /// Handle quest-related dialogue trigger
     pub fn handle_dialogue_trigger(
         &mut self,
@@ -1037,5 +1090,85 @@ mod tests {
 
         let recommendations = quest_system.get_quest_recommendations(&player, &faction_system);
         assert!(!recommendations.is_empty());
+    }
+
+    #[test]
+    fn test_abandon_quest() {
+        let mut quest_system = QuestSystem::new();
+        let mut quest = create_test_quest();
+        // Change category to non-tutorial so it can be abandoned
+        quest.category = QuestCategory::Practical;
+        let player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("test_quest", &player, &faction_system).unwrap();
+
+        // Abandon the quest
+        let result = quest_system.abandon_quest("test_quest", &mut faction_system);
+        assert!(result.is_ok());
+
+        // Check quest status is Abandoned
+        let progress = quest_system.player_progress.get("test_quest").unwrap();
+        assert_eq!(progress.status, QuestStatus::Abandoned);
+        assert!(progress.completed_at.is_some());
+    }
+
+    #[test]
+    fn test_cannot_abandon_tutorial() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_test_quest(); // Tutorial quest
+        let player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("test_quest", &player, &faction_system).unwrap();
+
+        // Try to abandon tutorial quest (should fail)
+        let result = quest_system.abandon_quest("test_quest", &mut faction_system);
+        assert!(result.is_err());
+
+        // Quest should still be in progress
+        let progress = quest_system.player_progress.get("test_quest").unwrap();
+        assert_eq!(progress.status, QuestStatus::InProgress);
+    }
+
+    #[test]
+    fn test_cannot_abandon_non_active_quest() {
+        let mut quest_system = QuestSystem::new();
+        let mut quest = create_test_quest();
+        quest.category = QuestCategory::Practical;
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+
+        // Try to abandon quest that hasn't been started
+        let result = quest_system.abandon_quest("test_quest", &mut faction_system);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_abandon_quest_with_faction_penalty() {
+        let mut quest_system = QuestSystem::new();
+        let mut quest = create_test_quest();
+        quest.category = QuestCategory::Practical;
+        // Add faction effects
+        quest.faction_effects.insert(FactionId::MagistersCouncil, 20);
+        let player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        // Get initial reputation
+        let initial_rep = faction_system.get_reputation(FactionId::MagistersCouncil);
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("test_quest", &player, &faction_system).unwrap();
+
+        // Abandon the quest
+        let result = quest_system.abandon_quest("test_quest", &mut faction_system);
+        assert!(result.is_ok());
+
+        // Check that faction reputation decreased
+        let new_rep = faction_system.get_reputation(FactionId::MagistersCouncil);
+        assert!(new_rep < initial_rep, "Reputation should decrease after abandoning quest");
     }
 }

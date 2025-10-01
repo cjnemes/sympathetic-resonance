@@ -131,7 +131,7 @@ impl CommandHandler for DefaultCommandHandler {
                 handle_quest_recommendations(quest_system, player, faction_system)
             }
             ParsedCommand::QuestAbandon { quest_id } => {
-                handle_quest_abandon(quest_id, quest_system)
+                handle_quest_abandon(quest_id, quest_system, faction_system)
             }
 
             ParsedCommand::Equip { crystal } => {
@@ -1275,9 +1275,8 @@ fn handle_quest_recommendations(quest_system: &QuestSystem, player: &Player, fac
 }
 
 /// Handle quest abandon command
-fn handle_quest_abandon(_quest_id: String, _quest_system: &mut QuestSystem) -> GameResult<String> {
-    // Implementation would mark quest as abandoned and clean up progress
-    Ok("Quest abandonment feature not yet implemented.".to_string())
+fn handle_quest_abandon(quest_id: String, quest_system: &mut QuestSystem, faction_system: &mut FactionSystem) -> GameResult<String> {
+    quest_system.abandon_quest(&quest_id, faction_system)
 }
 
 #[cfg(test)]
