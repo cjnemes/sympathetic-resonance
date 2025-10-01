@@ -100,20 +100,24 @@ A text adventure game featuring science-based magic in a low fantasy world, wher
 
 ---
 
-### Item Interactions - 📋 **Planned** (Post-MVP)
+### Item Interactions
 
-#### Take/Drop Items - 📋 **Planned** (v0.5.0)
-**Current State:** Placeholder messages
-**Location:** `src/input/command_handlers.rs:833-838`
+#### Take/Drop Items - ✅ **Implemented** (v0.4.1)
+**Status:** Complete (PR #26, merged 2025-09-30)
+**Location:** `src/input/command_handlers.rs:831-958`
 
-**Scope:**
-- Basic item pickup from locations
-- Drop items to current location
-- Integration with existing ItemSystem
-- Inventory weight/space validation
+**Implemented Features:**
+- ✅ Basic item pickup from locations
+- ✅ Drop items to current location
+- ✅ Integration with existing ItemSystem
+- ✅ Inventory weight/space validation
+- ✅ Prevents dropping equipped items
+- ✅ Case-insensitive item name matching
+- ✅ Clear error messages for all failure cases
+- ✅ 6 integration tests added
 
-**Implementation Estimate:** 2-3 days
-**Dependencies:** None (ItemSystem ready)
+**Completion Date:** 2025-09-30
+**Closed Issues:** #22, #14
 
 ---
 
@@ -246,22 +250,24 @@ A text adventure game featuring science-based magic in a low fantasy world, wher
 
 ## 📅 Roadmap by Version
 
-### v0.5.0 - "Interaction Expansion" (Est. 2-3 weeks)
+### v0.5.0 - "Interaction Expansion" (In Progress)
 
 **Focus:** Complete item interactions and quest content
 
 **Features:**
-- ✅ Take/Drop items
-- ✅ Unequip functionality
-- ✅ Quest abandonment
-- ✅ Quest Phase 1 narrative expansion
-- ✅ NPC dialogue expansion
-- ✅ Location description enrichment
+- ✅ Take/Drop items (Completed PR #26 - 2025-09-30)
+- 📋 Unequip functionality (Planned)
+- 📋 Quest abandonment (Planned)
+- 📋 Quest Phase 1 narrative expansion (Planned)
+- 📋 NPC dialogue expansion (Planned)
+- 📋 Location description enrichment (Planned)
+
+**Progress:** 1/6 features complete
 
 **Success Metrics:**
-- Players can fully interact with item system
-- At least 15 rich quest experiences available
-- Average quest completion time: 15-20 minutes
+- ✅ Players can fully interact with item system (take/drop/use complete)
+- 📋 At least 15 rich quest experiences available
+- 📋 Average quest completion time: 15-20 minutes
 
 ---
 
@@ -349,7 +355,7 @@ A text adventure game featuring science-based magic in a low fantasy world, wher
 - ✅ All core systems functional
 - ✅ 10+ hours of gameplay content
 - ✅ Complete learning progression (Tier 1-3 theories)
-- 🚧 Full item interaction capabilities
+- ✅ Full item interaction capabilities (take/drop/use complete)
 
 ### Release (v1.0.0)
 - 📋 25+ hours unique content
