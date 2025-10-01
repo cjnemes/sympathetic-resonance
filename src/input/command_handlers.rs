@@ -133,6 +133,9 @@ impl CommandHandler for DefaultCommandHandler {
             ParsedCommand::QuestAbandon { quest_id } => {
                 handle_quest_abandon(quest_id, quest_system, faction_system)
             }
+            ParsedCommand::QuestChoice { quest_id, choice_id, option_id } => {
+                handle_quest_choice(quest_id, choice_id, option_id, quest_system, player, faction_system)
+            }
 
             ParsedCommand::Equip { crystal } => {
                 handle_equip_crystal(crystal, player)
@@ -1277,6 +1280,18 @@ fn handle_quest_recommendations(quest_system: &QuestSystem, player: &Player, fac
 /// Handle quest abandon command
 fn handle_quest_abandon(quest_id: String, quest_system: &mut QuestSystem, faction_system: &mut FactionSystem) -> GameResult<String> {
     quest_system.abandon_quest(&quest_id, faction_system)
+}
+
+/// Handle quest choice command
+fn handle_quest_choice(
+    quest_id: String,
+    choice_id: String,
+    option_id: String,
+    quest_system: &mut QuestSystem,
+    player: &mut Player,
+    faction_system: &mut FactionSystem,
+) -> GameResult<String> {
+    quest_system.make_quest_choice(&quest_id, &choice_id, &option_id, player, faction_system)
 }
 
 #[cfg(test)]

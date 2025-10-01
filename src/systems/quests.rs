@@ -957,6 +957,168 @@ impl QuestSystem {
 
         recommendations
     }
+
+    /// Make a quest choice and apply its outcome
+    pub fn make_quest_choice(
+        &mut self,
+        quest_id: &str,
+        choice_id: &str,
+        option_id: &str,
+        player: &mut Player,
+        faction_system: &mut FactionSystem,
+    ) -> GameResult<String> {
+        // Check if quest is active
+        if !self.player_progress.contains_key(quest_id) {
+            return Err(crate::GameError::InvalidCommand(
+                format!("Quest '{}' is not active", quest_id)
+            ).into());
+        }
+
+        // Get quest definition
+        let quest = self.quest_definitions.get(quest_id)
+            .ok_or_else(|| crate::GameError::ContentNotFound(
+                format!("Quest definition not found: {}", quest_id)
+            ))?;
+
+        // Find the choice
+        let choice = quest.choices.iter()
+            .find(|c| c.id == choice_id)
+            .ok_or_else(|| crate::GameError::ContentNotFound(
+                format!("Choice '{}' not found in quest '{}'", choice_id, quest_id)
+            ))?;
+
+        // Check if choice prerequisite is met
+        if let Some(prereq) = &choice.prerequisite_objective {
+            let progress = self.player_progress.get(quest_id).unwrap();
+            let objective_completed = progress.objective_progress.get(prereq)
+                .map(|p| p.completed)
+                .unwrap_or(false);
+            if !objective_completed {
+                return Err(crate::GameError::InvalidCommand(
+                    format!("You must complete the '{}' objective before making this choice", prereq)
+                ).into());
+            }
+        }
+
+        // Find the selected option
+        let option = choice.options.iter()
+            .find(|o| o.id == option_id)
+            .ok_or_else(|| crate::GameError::ContentNotFound(
+                format!("Option '{}' not found in choice '{}'", option_id, choice_id)
+            ))?;
+
+        // Check option requirements
+        if let Some(reqs) = &option.requirements {
+            // Check theory requirements
+            for (theory_id, min_level) in &reqs.theory_requirements {
+                let player_level = player.knowledge.theories.get(theory_id).unwrap_or(&0.0);
+                if player_level < min_level {
+                    return Err(crate::GameError::InvalidCommand(
+                        format!(
+                            "You need {} understanding of '{}' to choose this option (you have {:.0}%)",
+                            (min_level * 100.0) as i32,
+                            theory_id,
+                            player_level * 100.0
+                        )
+                    ).into());
+                }
+            }
+
+            // Check faction requirements
+            for (faction_id, min_standing) in &reqs.faction_requirements {
+                let player_standing = player.faction_standings.get(faction_id).unwrap_or(&0);
+                if player_standing < min_standing {
+                    return Err(crate::GameError::InvalidCommand(
+                        format!(
+                            "You need {} standing with {} to choose this option (you have {})",
+                            min_standing,
+                            faction_id.display_name(),
+                            player_standing
+                        )
+                    ).into());
+                }
+            }
+
+            // Check item requirements
+            for item_id in &reqs.item_requirements {
+                let has_item = player.inventory.items.iter().any(|item| &item.name == item_id);
+                if !has_item {
+                    return Err(crate::GameError::InvalidCommand(
+                        format!("You need '{}' to choose this option", item_id)
+                    ).into());
+                }
+            }
+        }
+
+        // Apply the outcome
+        let outcome = &option.outcome;
+
+        // Apply faction changes
+        for (faction_id, change) in &outcome.faction_changes {
+            faction_system.modify_reputation(*faction_id, *change);
+        }
+
+        // Apply theory insights
+        for (theory_id, insight) in &outcome.theory_insights {
+            let current = player.knowledge.theories.get(theory_id).unwrap_or(&0.0);
+            player.knowledge.theories.insert(theory_id.clone(), (current + insight).min(1.0));
+        }
+
+        // Apply experience modifier (as mental acuity XP)
+        let base_exp = 50; // Base experience for making a choice
+        let modified_exp = (base_exp as f32 * outcome.experience_modifier) as i32;
+        player.add_experience(crate::core::player::AttributeType::MentalAcuity, modified_exp);
+
+        // Record the choice in quest progress
+        if let Some(progress) = self.player_progress.get_mut(quest_id) {
+            progress.player_choices.insert(choice_id.to_string(), option_id.to_string());
+        }
+
+        // Build response
+        let mut response = String::new();
+        response.push_str(&format!("=== {} ===\n\n", choice.prompt));
+        response.push_str(&format!("You chose: {}\n\n", option.text));
+        response.push_str(&format!("{}\n\n", outcome.narrative_result));
+
+        // Show NPC reactions
+        if !outcome.npc_reactions.is_empty() {
+            response.push_str("=== Reactions ===\n\n");
+            for (npc_id, reaction) in &outcome.npc_reactions {
+                response.push_str(&format!("{}: {}\n\n", npc_id, reaction));
+            }
+        }
+
+        // Show outcome type
+        response.push_str(&format!("Outcome: {:?}\n", outcome.outcome_type));
+        response.push_str(&format!("Experience gained: {} XP\n", modified_exp));
+
+        // Show faction changes
+        if !outcome.faction_changes.is_empty() {
+            response.push_str("\nFaction Standing Changes:\n");
+            for (faction_id, change) in &outcome.faction_changes {
+                let sign = if *change > 0 { "+" } else { "" };
+                response.push_str(&format!("  {} {}{}\n", faction_id.display_name(), sign, change));
+            }
+        }
+
+        // Show theory insights
+        if !outcome.theory_insights.is_empty() {
+            response.push_str("\nTheory Insights Gained:\n");
+            for (theory_id, insight) in &outcome.theory_insights {
+                response.push_str(&format!("  {} +{:.0}%\n", theory_id, insight * 100.0));
+            }
+        }
+
+        // Show unlocked content
+        if !outcome.content_unlocks.is_empty() {
+            response.push_str("\nUnlocked:\n");
+            for unlock in &outcome.content_unlocks {
+                response.push_str(&format!("  • {}\n", unlock));
+            }
+        }
+
+        Ok(response)
+    }
 }
 
 impl Default for QuestSystem {
