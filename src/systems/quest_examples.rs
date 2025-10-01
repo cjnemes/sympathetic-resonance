@@ -185,6 +185,7 @@ fn create_resonance_foundation_quest() -> QuestDefinition {
         },
 
         branching_paths: HashMap::new(), // Simple linear quest for beginners
+        choices: vec![], // Will be added in Phase 1C
         involved_npcs: vec!["tutorial_assistant".to_string()],
         locations: vec!["practice_hall".to_string(), "tutorial_chamber".to_string()],
         estimated_duration: 45,
@@ -484,6 +485,7 @@ fn create_crystal_analysis_quest() -> QuestDefinition {
         },
 
         branching_paths,
+        choices: vec![], // Will be added in Phase 1C
         involved_npcs: vec!["dr_felix".to_string(), "technician_marcus".to_string()],
         locations: vec!["crystal_garden_lab".to_string(), "resonance_observatory".to_string()],
         estimated_duration: 90,
@@ -664,6 +666,7 @@ fn create_diplomatic_balance_quest() -> QuestDefinition {
         },
 
         branching_paths: HashMap::new(), // Could add complex negotiation branches
+        choices: vec![], // Will be added in future phases
         involved_npcs: vec![
             "ambassador_cordelia".to_string(),
             "observer_lyra".to_string(),
@@ -880,6 +883,7 @@ fn create_healing_research_quest() -> QuestDefinition {
         },
 
         branching_paths: HashMap::new(), // Could add different healing specializations
+        choices: vec![], // Will be added in future phases
         involved_npcs: vec!["healer_seraphina".to_string(), "dr_felix".to_string()],
         locations: vec!["crystal_garden_lab".to_string()],
         estimated_duration: 150,
@@ -1139,6 +1143,7 @@ fn create_unstable_site_investigation_quest() -> QuestDefinition {
         },
 
         branching_paths: HashMap::new(), // Could add different approaches to stabilization
+        choices: vec![], // Will be added in future phases
         involved_npcs: vec![
             "warden_gareth".to_string(),
             "captain_vera".to_string(),

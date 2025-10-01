@@ -50,6 +50,9 @@ pub struct QuestDefinition {
     pub educational_focus: EducationalObjectives,
     /// Quest can branch into multiple paths
     pub branching_paths: HashMap<String, QuestBranch>,
+    /// Player choices within the quest
+    #[serde(default)]
+    pub choices: Vec<QuestChoice>,
 
     /// NPCs involved in this quest
     pub involved_npcs: Vec<String>,
@@ -224,6 +227,78 @@ pub struct QuestBranch {
     pub faction_implications: HashMap<FactionId, i32>,
     /// Educational focus of this branch
     pub educational_focus: EducationalObjectives,
+}
+
+/// Player choice within a quest
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QuestChoice {
+    pub id: String,
+    pub prompt: String,
+    pub description: String,
+    /// Available options for this choice
+    pub options: Vec<ChoiceOption>,
+    /// When this choice becomes available (objective_id must be complete)
+    pub prerequisite_objective: Option<String>,
+    /// Whether this choice is required to progress
+    pub required: bool,
+}
+
+/// Individual option within a quest choice
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChoiceOption {
+    pub id: String,
+    pub text: String,
+    pub description: String,
+    /// Requirements to select this option
+    pub requirements: Option<ChoiceRequirements>,
+    /// Outcome if this option is chosen
+    pub outcome: QuestOutcome,
+}
+
+/// Requirements to select a specific choice option
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChoiceRequirements {
+    /// Minimum theory understanding (theory_id, min_level)
+    pub theory_requirements: Vec<(String, f32)>,
+    /// Faction standing requirements
+    pub faction_requirements: Vec<(FactionId, i32)>,
+    /// Required items in inventory
+    pub item_requirements: Vec<String>,
+}
+
+/// Outcome of a quest choice
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QuestOutcome {
+    pub outcome_type: OutcomeType,
+    /// Experience modifier (multiplier: 1.0 = normal, 1.5 = 50% bonus)
+    pub experience_modifier: f32,
+    /// Faction standing changes from this choice
+    pub faction_changes: HashMap<FactionId, i32>,
+    /// Theory insights gained/lost
+    pub theory_insights: HashMap<String, f32>,
+    /// Items gained/lost
+    pub item_changes: Vec<String>,
+    /// Narrative text describing the outcome
+    pub narrative_result: String,
+    /// Follow-up dialogue from NPCs
+    pub npc_reactions: HashMap<String, String>,
+    /// Unlocks or blocks future quest content
+    pub content_unlocks: Vec<String>,
+}
+
+/// Type of quest outcome
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum OutcomeType {
+    /// Full success - optimal outcome
+    Success,
+    /// Partial success - goals achieved with complications
+    PartialSuccess,
+    /// Alternative success - different but valid approach
+    AlternativeSuccess,
+    /// Failure - objectives not met
+    Failure,
+    /// Mixed outcome - some wins, some losses
+    Mixed,
 }
 
 /// Player's progress on a specific quest
@@ -964,6 +1039,7 @@ mod tests {
                 assessment_criteria: vec![],
             },
             branching_paths: HashMap::new(),
+            choices: vec![],
             involved_npcs: vec!["test_npc".to_string()],
             locations: vec!["test_location".to_string()],
             estimated_duration: 30,
