@@ -192,6 +192,12 @@ pub enum DisturbanceType {
     Amplification,     // Enhanced magical effects (dangerous)
 }
 
+impl Default for WorldState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WorldState {
     /// Create a new world state with default values
     pub fn new() -> Self {

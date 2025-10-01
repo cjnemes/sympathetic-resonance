@@ -441,7 +441,7 @@ impl Player {
             _ => {} // Other methods use base efficiency
         }
 
-        efficiency.max(0.1).min(2.0) // Clamp between 10% and 200% efficiency
+        efficiency.clamp(0.1, 2.0) // Clamp between 10% and 200% efficiency
     }
 
     /// Get all mastered theories
@@ -858,6 +858,12 @@ pub struct LearningStats {
     pub average_efficiency: f32,
     pub mastery_date: Option<i64>,
     pub discovery_date: i64,
+}
+
+impl Default for KnowledgeState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl KnowledgeState {

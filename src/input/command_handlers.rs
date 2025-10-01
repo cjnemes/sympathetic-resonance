@@ -4,7 +4,7 @@
 
 use crate::input::command_parser::ParsedCommand;
 use crate::core::{Player, WorldState};
-use crate::persistence::DatabaseManager;
+use crate::persistence::{DatabaseManager, SaveManager};
 use crate::systems::magic::MagicSystem;
 use crate::systems::dialogue::DialogueSystem;
 use crate::systems::factions::FactionSystem;
@@ -25,6 +25,7 @@ pub trait CommandHandler {
         faction_system: &mut FactionSystem,
         knowledge_system: &mut KnowledgeSystem,
         quest_system: &mut QuestSystem,
+        save_manager: &SaveManager,
     ) -> GameResult<String>;
 }
 
@@ -43,6 +44,7 @@ impl CommandHandler for DefaultCommandHandler {
         faction_system: &mut FactionSystem,
         knowledge_system: &mut KnowledgeSystem,
         quest_system: &mut QuestSystem,
+        save_manager: &SaveManager,
     ) -> GameResult<String> {
         match command {
             ParsedCommand::Move { direction } => {
@@ -136,12 +138,12 @@ impl CommandHandler for DefaultCommandHandler {
                 handle_equip_crystal(crystal, player)
             }
 
-            ParsedCommand::Save { slot: _ } => {
-                Ok("Save functionality not yet implemented.".to_string())
+            ParsedCommand::Save { slot } => {
+                handle_save(slot, player, world, quest_system, save_manager)
             }
 
-            ParsedCommand::Load { slot: _ } => {
-                Ok("Load functionality not yet implemented.".to_string())
+            ParsedCommand::Load { slot } => {
+                handle_load(slot, player, world, quest_system, save_manager)
             }
 
             ParsedCommand::Help { topic: _ } => {
@@ -921,9 +923,10 @@ pub fn execute_command(
     faction_system: &mut FactionSystem,
     knowledge_system: &mut KnowledgeSystem,
     quest_system: &mut QuestSystem,
+    save_manager: &SaveManager,
 ) -> GameResult<String> {
     let handler = DefaultCommandHandler;
-    handler.execute(command, player, world, database, magic_system, dialogue_system, faction_system, knowledge_system, quest_system)
+    handler.execute(command, player, world, database, magic_system, dialogue_system, faction_system, knowledge_system, quest_system, save_manager)
 }
 
 /// Handle quest list command
@@ -1094,5 +1097,43 @@ mod tests {
         let player = Player::new("Test Player".to_string());
         let result = handle_crystal_status(&player).unwrap();
         assert!(result.contains("CRYSTAL STATUS"));
+    }
+}
+
+/// Handle save command
+fn handle_save(
+    slot: Option<String>,
+    player: &Player,
+    world: &WorldState,
+    quest_system: &QuestSystem,
+    save_manager: &SaveManager,
+) -> GameResult<String> {
+    let save_name = Some(format!("{}'s Adventure", player.name));
+
+    match save_manager.save_game(player, world, quest_system, slot.clone(), save_name) {
+        Ok(message) => Ok(format!("{}\n\nGame progress saved successfully.", message)),
+        Err(e) => Ok(format!("Failed to save game: {}", e)),
+    }
+}
+
+/// Handle load command
+fn handle_load(
+    slot: Option<String>,
+    player: &mut Player,
+    world: &mut WorldState,
+    quest_system: &mut QuestSystem,
+    save_manager: &SaveManager,
+) -> GameResult<String> {
+    let slot_name = slot.unwrap_or_else(|| "autosave".to_string());
+
+    match save_manager.load_game(&slot_name) {
+        Ok((loaded_player, loaded_world, loaded_quest_system)) => {
+            *player = loaded_player;
+            *world = loaded_world;
+            *quest_system = loaded_quest_system;
+            Ok(format!("Game loaded from slot '{}' successfully!\n\nWelcome back, {}!",
+                      slot_name, player.name))
+        }
+        Err(e) => Ok(format!("Failed to load game: {}", e)),
     }
 }
