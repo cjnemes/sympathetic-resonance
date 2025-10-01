@@ -829,13 +829,131 @@ fn handle_research(
 }
 
 /// Handle take command
-fn handle_take(item: String, _player: &mut Player, _world: &mut WorldState) -> GameResult<String> {
-    Ok(format!("You attempt to take the {}. [Item system not yet implemented]", item))
+fn handle_take(item_name: String, player: &mut Player, world: &mut WorldState) -> GameResult<String> {
+    // Ensure player has enhanced item system
+    player.ensure_enhanced_item_system();
+
+    // Get current location
+    let location = world.current_location_mut()
+        .ok_or_else(|| crate::GameError::InvalidCommand("You are not in a valid location".to_string()))?;
+
+    // Search for item in location's items list (case-insensitive)
+    let item_index = location.items.iter()
+        .position(|item| item.to_lowercase().contains(&item_name.to_lowercase()))
+        .ok_or_else(|| crate::GameError::InvalidInput(
+            format!("There is no '{}' here to take", item_name)
+        ))?;
+
+    let item_id = location.items.remove(item_index);
+
+    // Create a basic item for the inventory
+    // In a full implementation, this would load from database or item definitions
+    let item = crate::systems::items::core::Item {
+        id: item_id.clone(),
+        properties: crate::systems::items::core::ItemProperties {
+            name: item_id.clone(),
+            description: format!("A {}", item_id),
+            weight: 1.0,
+            value: 10,
+            durability: 100,
+            max_durability: 100,
+            rarity: crate::systems::items::core::ItemRarity::Common,
+            custom_properties: std::collections::HashMap::new(),
+        },
+        item_type: crate::systems::items::core::ItemType::Mundane,
+        magical_properties: None,
+    };
+
+    // Try to add to inventory
+    let item_name = item.properties.name.clone();
+
+    // Get mutable reference to the item system
+    let item_system = player.inventory.enhanced_items.as_mut()
+        .ok_or_else(|| crate::GameError::InvalidCommand("Item system not available".to_string()))?;
+
+    // Validate addition
+    item_system.inventory_manager.validate_addition(&item)?;
+
+    // Add to inventory manager
+    match item_system.inventory_manager.add_item(item.clone()) {
+        Ok(_) => {
+            // Update player's legacy inventory for backward compatibility
+            let legacy_item = crate::core::player::Item {
+                name: item.properties.name.clone(),
+                description: item.properties.description.clone(),
+                item_type: crate::core::player::ItemType::Mundane,
+            };
+            player.inventory.items.push(legacy_item);
+            Ok(format!("You take the {}.", item_name))
+        }
+        Err(e) => {
+            // If adding fails, put the item back in the location
+            if let Some(loc) = world.current_location_mut() {
+                loc.items.push(item_id);
+            }
+            Err(e.into())
+        }
+    }
 }
 
 /// Handle drop command
-fn handle_drop(item: String, _player: &mut Player, _world: &mut WorldState) -> GameResult<String> {
-    Ok(format!("You attempt to drop the {}. [Item system not yet implemented]", item))
+fn handle_drop(item_name: String, player: &mut Player, world: &mut WorldState) -> GameResult<String> {
+    // Ensure player has enhanced item system
+    player.ensure_enhanced_item_system();
+
+    // Find item in inventory (case-insensitive search by name)
+    let item_system = player.inventory.enhanced_items.as_ref()
+        .ok_or_else(|| crate::GameError::InvalidCommand("Item system not available".to_string()))?;
+
+    // Search for item by name
+    let item_id = item_system.inventory_manager.items.iter()
+        .find(|(_, item)| item.properties.name.to_lowercase().contains(&item_name.to_lowercase()))
+        .map(|(id, _)| id.clone())
+        .ok_or_else(|| crate::GameError::InvalidInput(
+            format!("You don't have a '{}' to drop", item_name)
+        ))?;
+
+    // Check if item is equipped
+    if let Some(equipment_manager) = player.inventory.enhanced_items.as_ref().map(|sys| &sys.equipment_manager) {
+        let equipped_items = equipment_manager.get_equipped_items();
+        if equipped_items.contains(&&item_id) {
+            return Err(crate::GameError::InvalidCommand(
+                format!("You must unequip the {} before dropping it", item_name)
+            ).into());
+        }
+    }
+
+    // Get mutable reference to item system
+    let item_system = player.inventory.enhanced_items.as_mut()
+        .ok_or_else(|| crate::GameError::InvalidCommand("Item system not available".to_string()))?;
+
+    // Remove from inventory manager
+    match item_system.inventory_manager.remove_item(&item_id) {
+        Ok(Some(item)) => {
+            // Remove from player's legacy inventory
+            if let Some(pos) = player.inventory.items.iter().position(|i| i.name == item.properties.name) {
+                player.inventory.items.remove(pos);
+            }
+
+            // Add to current location
+            if let Some(location) = world.current_location_mut() {
+                location.items.push(item.id.clone());
+                Ok(format!("You drop the {}.", item.properties.name))
+            } else {
+                // If we can't add to location, put it back in inventory
+                let _ = item_system.inventory_manager.add_item(item.clone());
+                let legacy_item = crate::core::player::Item {
+                    name: item.properties.name.clone(),
+                    description: item.properties.description.clone(),
+                    item_type: crate::core::player::ItemType::Mundane,
+                };
+                player.inventory.items.push(legacy_item);
+                Err(crate::GameError::InvalidCommand("Cannot drop item here".to_string()).into())
+            }
+        }
+        Ok(None) => Err(crate::GameError::InvalidInput("Item not found".to_string()).into()),
+        Err(e) => Err(e.into()),
+    }
 }
 
 /// Handle equip crystal command
