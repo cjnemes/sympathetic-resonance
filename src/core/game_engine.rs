@@ -1,6 +1,6 @@
 //! Main game engine coordinating all systems
 
-use crate::core::{Player, WorldState, EventBus};
+use crate::core::{Player, WorldState};
 use crate::systems::{MagicSystem, FactionSystem, DialogueSystem, KnowledgeSystem, QuestSystem};
 use crate::input::{CommandParser, execute_command};
 use crate::persistence::{DatabaseManager, SaveManager};
@@ -29,9 +29,6 @@ pub struct GameEngine {
     database: DatabaseManager,
     /// Save manager
     save_manager: SaveManager,
-    /// Event bus
-    #[allow(dead_code)]
-    event_bus: EventBus,
     /// Debug mode flag
     debug_mode: bool,
     /// Game running flag
@@ -82,7 +79,6 @@ impl GameEngine {
             command_parser: CommandParser::new(),
             database,
             save_manager,
-            event_bus: EventBus::new(),
             debug_mode: false,
             running: false,
         })
