@@ -163,7 +163,15 @@ Database path: `content/database.db`
   - `tests/unequip_integration.rs` - Equipment removal workflows
 - Performance benchmarks: `src/performance_tests.rs`
 
-**Current Status:** 263/263 tests passing (203 unit + 60 integration)
+**Current Status:** 279/279 tests passing (219 unit + 60 integration)
+
+**Quest Choice Test Coverage:**
+- 16 comprehensive tests for quest choice system covering:
+  - Choice selection validation (valid/invalid IDs, prerequisites)
+  - Requirement validation (theory, faction, item requirements)
+  - Outcome application (faction changes, theory insights, experience)
+  - Edge cases and error conditions
+  - Content unlocks and NPC reactions
 
 **When Adding Features:**
 1. Add unit tests for new functions
