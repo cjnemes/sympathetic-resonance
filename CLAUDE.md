@@ -163,7 +163,7 @@ Database path: `content/database.db`
   - `tests/unequip_integration.rs` - Equipment removal workflows
 - Performance benchmarks: `src/performance_tests.rs`
 
-**Current Status:** 263/263 tests passing (203 unit + 60 integration)
+**Current Status:** 266/266 tests passing (206 unit + 60 integration)
 
 **When Adding Features:**
 1. Add unit tests for new functions
@@ -207,12 +207,20 @@ Database path: `content/database.db`
 - `load` or `load <slot_name>` - Load saved game state
 
 **Save includes:**
-- Player state (attributes, inventory, knowledge)
-- World state (location, time, conditions, events)
-- Quest progress and active quests
-- Faction reputation
-- Theory understanding levels
-- Learning history and research progress
+- Player state (attributes, inventory, knowledge, faction standings)
+- World state (locations, time, environment, events)
+- All game systems:
+  - QuestSystem (quest definitions, progress, global state)
+  - CombatSystem (active encounters, combat state)
+  - FactionSystem (reputation, political relationships)
+  - KnowledgeSystem (theory understanding, learning history)
+  - DialogueSystem (NPC state, dispositions)
+  - MagicSystem (stateless, recreated on load)
+
+**Serialization Notes:**
+- Custom serialization helpers in `src/systems/serde_helpers.rs` handle HashMap with enum/tuple keys
+- JSON doesn't support non-string HashMap keys; helpers convert to Vec for serialization
+- Supported types: `HashMap<FactionId>`, `HashMap<LearningMethod>`, `HashMap<Direction>`, `HashMap<(FactionId, FactionId)>`, `HashMap<i32>`
 
 ## Magic System Details
 

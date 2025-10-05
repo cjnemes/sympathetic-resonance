@@ -8,6 +8,10 @@ use super::FactionId;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReputationSystem {
     /// Player's current standing with each faction (-100 to +100)
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_map"
+    )]
     reputation_scores: HashMap<FactionId, i32>,
     /// History of reputation changes for analytics
     reputation_history: Vec<ReputationChange>,

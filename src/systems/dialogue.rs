@@ -50,6 +50,10 @@ pub struct QuestDialogue {
 pub struct DialogueTree {
     pub greeting: DialogueNode,
     pub topics: HashMap<String, DialogueNode>,
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_map"
+    )]
     pub faction_specific: HashMap<FactionId, DialogueNode>,
     /// Time-of-day variations for greeting (optional)
     #[serde(default)]
@@ -102,6 +106,7 @@ pub enum DialogueEffect {
     ShareResearch(String, String), // theory_id, research_data
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DialogueSystem {
     npcs: HashMap<String, NPC>,
 }

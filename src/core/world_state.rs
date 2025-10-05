@@ -35,6 +35,10 @@ pub struct Location {
     /// Rich description including magical signatures
     pub description: String,
     /// Available exits and their destinations
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_direction_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_direction_map"
+    )]
     pub exits: HashMap<Direction, String>,
     /// NPCs currently in this location
     pub npcs: Vec<String>,

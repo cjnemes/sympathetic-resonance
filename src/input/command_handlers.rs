@@ -145,11 +145,11 @@ impl CommandHandler for DefaultCommandHandler {
             }
 
             ParsedCommand::Save { slot } => {
-                handle_save(slot, player, world, quest_system, save_manager)
+                handle_save(slot, player, world, quest_system, combat_system, faction_system, knowledge_system, dialogue_system, magic_system, save_manager)
             }
 
             ParsedCommand::Load { slot } => {
-                handle_load(slot, player, world, quest_system, save_manager)
+                handle_load(slot, player, world, quest_system, combat_system, faction_system, knowledge_system, dialogue_system, magic_system, save_manager)
             }
 
             ParsedCommand::Help { topic: _ } => {
@@ -1425,11 +1425,21 @@ fn handle_save(
     player: &Player,
     world: &WorldState,
     quest_system: &QuestSystem,
+    combat_system: &CombatSystem,
+    faction_system: &FactionSystem,
+    knowledge_system: &KnowledgeSystem,
+    dialogue_system: &DialogueSystem,
+    magic_system: &MagicSystem,
     save_manager: &SaveManager,
 ) -> GameResult<String> {
     let save_name = Some(format!("{}'s Adventure", player.name));
 
-    match save_manager.save_game(player, world, quest_system, slot.clone(), save_name) {
+    match save_manager.save_game(
+        player, world, quest_system,
+        combat_system, faction_system, knowledge_system,
+        dialogue_system, magic_system,
+        slot.clone(), save_name
+    ) {
         Ok(message) => Ok(format!("{}\n\nGame progress saved successfully.", message)),
         Err(e) => Ok(format!("Failed to save game: {}", e)),
     }
@@ -1441,15 +1451,34 @@ fn handle_load(
     player: &mut Player,
     world: &mut WorldState,
     quest_system: &mut QuestSystem,
+    combat_system: &mut CombatSystem,
+    faction_system: &mut FactionSystem,
+    knowledge_system: &mut KnowledgeSystem,
+    dialogue_system: &mut DialogueSystem,
+    magic_system: &mut MagicSystem,
     save_manager: &SaveManager,
 ) -> GameResult<String> {
     let slot_name = slot.unwrap_or_else(|| "autosave".to_string());
 
     match save_manager.load_game(&slot_name) {
-        Ok((loaded_player, loaded_world, loaded_quest_system)) => {
+        Ok((
+            loaded_player,
+            loaded_world,
+            loaded_quest_system,
+            loaded_combat_system,
+            loaded_faction_system,
+            loaded_knowledge_system,
+            loaded_dialogue_system,
+            loaded_magic_system,
+        )) => {
             *player = loaded_player;
             *world = loaded_world;
             *quest_system = loaded_quest_system;
+            *combat_system = loaded_combat_system;
+            *faction_system = loaded_faction_system;
+            *knowledge_system = loaded_knowledge_system;
+            *dialogue_system = loaded_dialogue_system;
+            *magic_system = loaded_magic_system;
             Ok(format!("Game loaded from slot '{}' successfully!\n\nWelcome back, {}!",
                       slot_name, player.name))
         }

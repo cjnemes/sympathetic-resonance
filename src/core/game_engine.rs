@@ -162,10 +162,15 @@ impl GameEngine {
 
     /// Load a save file
     pub fn load_save(&mut self, save_path: &str) -> GameResult<()> {
-        let (player, world, quest_system) = self.save_manager.load_game(save_path)?;
+        let (player, world, quest_system, combat_system, faction_system, knowledge_system, dialogue_system, magic_system) = self.save_manager.load_game(save_path)?;
         self.player = player;
         self.world = world;
         self.quest_system = quest_system;
+        self.combat_system = combat_system;
+        self.faction_system = faction_system;
+        self.knowledge_system = knowledge_system;
+        self.dialogue_system = dialogue_system;
+        self.magic_system = magic_system;
         Ok(())
     }
 

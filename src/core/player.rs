@@ -152,6 +152,10 @@ pub struct Player {
     /// Mental energy and fatigue tracking
     pub mental_state: MentalState,
     /// Faction reputation standings
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_map"
+    )]
     pub faction_standings: HashMap<FactionId, i32>,
     /// Theory knowledge and research
     pub knowledge: KnowledgeState,
