@@ -168,6 +168,7 @@ mod tests {
         let (mut player, mut world, database, mut magic_system, mut dialogue_system, mut faction_system, mut knowledge_system) = create_test_env();
         let mut quest_system = crate::systems::QuestSystem::new();
         let save_manager = crate::persistence::SaveManager::new().unwrap();
+        let mut combat_system = crate::systems::combat::CombatSystem::new();
         let parser = CommandParser::new();
 
         let (duration, _) = time_operation(|| {
@@ -185,6 +186,7 @@ mod tests {
                             &mut faction_system,
                             &mut knowledge_system,
                             &mut quest_system,
+                            &mut combat_system,
                             &save_manager,
                         );
                     }
@@ -204,6 +206,7 @@ mod tests {
         let (mut player, mut world, database, mut magic_system, mut dialogue_system, mut faction_system, mut knowledge_system) = create_test_env();
         let mut quest_system = crate::systems::QuestSystem::new();
         let save_manager = crate::persistence::SaveManager::new().unwrap();
+        let mut combat_system = crate::systems::combat::CombatSystem::new();
         let parser = CommandParser::new();
 
         // Test individual commands to identify bottlenecks
@@ -229,6 +232,7 @@ mod tests {
                             &mut faction_system,
                             &mut knowledge_system,
                             &mut quest_system,
+                            &mut combat_system,
                             &save_manager,
                         );
                     }

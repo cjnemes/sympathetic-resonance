@@ -10,6 +10,7 @@ use crate::systems::dialogue::DialogueSystem;
 use crate::systems::factions::FactionSystem;
 use crate::systems::knowledge::{KnowledgeSystem, LearningMethod};
 use crate::systems::quests::QuestSystem;
+use crate::systems::combat::{CombatSystem, DefenseType};
 use crate::GameResult;
 
 /// Trait for handling command execution
@@ -25,6 +26,7 @@ pub trait CommandHandler {
         faction_system: &mut FactionSystem,
         knowledge_system: &mut KnowledgeSystem,
         quest_system: &mut QuestSystem,
+        combat_system: &mut CombatSystem,
         save_manager: &SaveManager,
     ) -> GameResult<String>;
 }
@@ -44,6 +46,7 @@ impl CommandHandler for DefaultCommandHandler {
         faction_system: &mut FactionSystem,
         knowledge_system: &mut KnowledgeSystem,
         quest_system: &mut QuestSystem,
+        combat_system: &mut CombatSystem,
         save_manager: &SaveManager,
     ) -> GameResult<String> {
         match command {
@@ -192,6 +195,22 @@ impl CommandHandler for DefaultCommandHandler {
 
             ParsedCommand::GiveItem { item, target } => {
                 Ok(format!("Give {} to {} - not yet implemented.", item, target))
+            }
+
+            ParsedCommand::Attack { target, spell } => {
+                handle_attack_command(target, spell, player, world, magic_system, combat_system)
+            }
+
+            ParsedCommand::Defend { defense_type } => {
+                handle_defend_command(defense_type, player, combat_system)
+            }
+
+            ParsedCommand::Flee => {
+                handle_flee_command(player, combat_system)
+            }
+
+            ParsedCommand::ExamineEnemy => {
+                handle_examine_enemy_command(combat_system)
             }
 
             ParsedCommand::Unknown { original, suggestions } => {
@@ -1123,6 +1142,83 @@ fn generate_location_description(
     description
 }
 
+/// Handle attack command to initiate or continue combat
+fn handle_attack_command(
+    _target: String,
+    spell: Option<String>,
+    player: &mut Player,
+    world: &mut WorldState,
+    magic_system: &mut MagicSystem,
+    combat_system: &mut CombatSystem,
+) -> GameResult<String> {
+    // For now, create a stub enemy - in the future this would look up enemies in the world
+    if !combat_system.is_in_combat() {
+        // Start new combat encounter
+        use crate::systems::combat::{Enemy, DifficultyTier};
+
+        // Create a simple enemy for testing (this should come from world/database)
+        let enemy = Enemy::new(
+            "corrupted_shard".to_string(),
+            "Corrupted Crystal Shard".to_string(),
+            "A small crystalline entity crackling with unstable magical energy.".to_string(),
+            DifficultyTier::Beginner,
+        );
+
+        combat_system.start_encounter(enemy)?;
+    }
+
+    // Determine spell to use
+    let spell_type = spell.unwrap_or_else(|| "light".to_string());
+
+    // Execute attack (correct argument order: player, world, magic_system, spell_type)
+    combat_system.player_attack(player, world, magic_system, &spell_type)
+}
+
+/// Handle defend command during combat
+fn handle_defend_command(
+    defense_type: Option<String>,
+    player: &mut Player,
+    combat_system: &mut CombatSystem,
+) -> GameResult<String> {
+    if !combat_system.is_in_combat() {
+        return Ok("You are not in combat.".to_string());
+    }
+
+    // Parse defense type
+    let def_type = match defense_type.as_deref() {
+        Some("shield") => DefenseType::Shield,
+        Some("evade") => DefenseType::Evade,
+        Some("counter") | Some("countermagic") => DefenseType::CounterMagic,
+        _ => DefenseType::Shield, // Default to shield
+    };
+
+    combat_system.player_defend(player, def_type)
+}
+
+/// Handle flee command during combat
+fn handle_flee_command(
+    player: &mut Player,
+    combat_system: &mut CombatSystem,
+) -> GameResult<String> {
+    if !combat_system.is_in_combat() {
+        return Ok("You are not in combat.".to_string());
+    }
+
+    combat_system.player_flee(player)
+}
+
+/// Handle examine enemy command
+fn handle_examine_enemy_command(
+    combat_system: &CombatSystem,
+) -> GameResult<String> {
+    if !combat_system.is_in_combat() {
+        return Ok("You are not in combat.".to_string());
+    }
+
+    combat_system.get_status()
+        .ok_or_else(|| crate::GameError::InvalidCommand("Not in combat.".to_string()).into())
+}
+
 /// Main function to execute a command
 pub fn execute_command(
     command: ParsedCommand,
@@ -1134,10 +1230,11 @@ pub fn execute_command(
     faction_system: &mut FactionSystem,
     knowledge_system: &mut KnowledgeSystem,
     quest_system: &mut QuestSystem,
+    combat_system: &mut CombatSystem,
     save_manager: &SaveManager,
 ) -> GameResult<String> {
     let handler = DefaultCommandHandler;
-    handler.execute(command, player, world, database, magic_system, dialogue_system, faction_system, knowledge_system, quest_system, save_manager)
+    handler.execute(command, player, world, database, magic_system, dialogue_system, faction_system, knowledge_system, quest_system, combat_system, save_manager)
 }
 
 /// Handle quest list command
