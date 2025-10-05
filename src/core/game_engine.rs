@@ -1,7 +1,7 @@
 //! Main game engine coordinating all systems
 
 use crate::core::{Player, WorldState};
-use crate::systems::{MagicSystem, FactionSystem, DialogueSystem, KnowledgeSystem, QuestSystem};
+use crate::systems::{MagicSystem, FactionSystem, DialogueSystem, KnowledgeSystem, QuestSystem, CombatSystem};
 use crate::input::{CommandParser, execute_command};
 use crate::persistence::{DatabaseManager, SaveManager};
 use crate::GameResult;
@@ -23,6 +23,8 @@ pub struct GameEngine {
     knowledge_system: KnowledgeSystem,
     /// Quest system
     quest_system: QuestSystem,
+    /// Combat system
+    combat_system: CombatSystem,
     /// Command parser
     command_parser: CommandParser,
     /// Database manager
@@ -76,6 +78,7 @@ impl GameEngine {
             dialogue_system,
             knowledge_system,
             quest_system,
+            combat_system: CombatSystem::new(),
             command_parser: CommandParser::new(),
             database,
             save_manager,
@@ -128,7 +131,7 @@ impl GameEngine {
 
         match parse_result {
             crate::input::CommandResult::Success(command) => {
-                execute_command(command, &mut self.player, &mut self.world, &self.database, &mut self.magic_system, &mut self.dialogue_system, &mut self.faction_system, &mut self.knowledge_system, &mut self.quest_system, &self.save_manager)
+                execute_command(command, &mut self.player, &mut self.world, &self.database, &mut self.magic_system, &mut self.dialogue_system, &mut self.faction_system, &mut self.knowledge_system, &mut self.quest_system, &mut self.combat_system, &self.save_manager)
             }
             crate::input::CommandResult::Error(msg) => {
                 Ok(msg)
@@ -229,6 +232,16 @@ impl GameEngine {
     /// Get mutable knowledge system reference
     pub fn knowledge_system_mut(&mut self) -> &mut KnowledgeSystem {
         &mut self.knowledge_system
+    }
+
+    /// Get combat system reference
+    pub fn combat_system(&self) -> &CombatSystem {
+        &self.combat_system
+    }
+
+    /// Get mutable combat system reference
+    pub fn combat_system_mut(&mut self) -> &mut CombatSystem {
+        &mut self.combat_system
     }
 
     /// Handle cross-system quest integration

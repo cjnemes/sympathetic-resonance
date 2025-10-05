@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Critical Development Principles
+
+**⚠️ ERROR-FIXING PRIORITY:** Always fix compilation errors immediately before proceeding with additional work. Leaving errors and moving forward causes too many cascading issues. This is a strict requirement for all development work.
+
 ## Project Overview
 
 **Sympathetic Resonance** is a text adventure game featuring science-based magic in a low fantasy world. The game uses a sophisticated magic system where neural energy is amplified through crystal matrices with measurable costs and limitations.
@@ -81,7 +85,8 @@ src/
 │       ├── equipment.rs    # Equipment slots and management
 │       ├── inventory.rs    # Inventory constraints and stacking
 │       ├── educational.rs  # Learning enhancement items
-│       └── interactions.rs # Take, drop, use mechanics
+│       ├── interactions.rs # Take, drop, use mechanics
+│       └── unlock_system.rs # Progressive item unlocking based on progression
 │
 ├── input/          # Command parsing and natural language
 │   ├── command_parser.rs      # Command tokenization
@@ -129,7 +134,8 @@ src/
 - ItemSystem manages equipment slots, inventory constraints, and crafting
 - Educational items boost learning efficiency for specific theories
 - Equipment provides stat bonuses that affect magical abilities
-- Natural language commands: "take sword", "equip helmet", "drop item"
+- Progressive unlock system reveals items based on theory mastery and quest completion
+- Natural language commands: "take sword", "equip helmet", "drop item", "unequip chest"
 - Integrates with Player inventory (backward compatible)
 
 ## Database Schema
@@ -149,16 +155,23 @@ Database path: `content/database.db`
 - Unit tests: inline in modules with `#[cfg(test)]`
 - Integration tests: `src/integration_tests.rs`
 - System-specific tests: `src/systems/quest_tests.rs`
-- Performance tests: `src/performance_tests.rs`
+- Standalone integration tests: `tests/` directory
+  - `tests/quest_dialogue_integration.rs` - Quest-dialogue interactions
+  - `tests/item_system_integration.rs` - Item system workflows
+  - `tests/educational_content_integration.rs` - Educational item integration
+  - `tests/take_drop_integration.rs` - Item pickup/drop mechanics
+  - `tests/unequip_integration.rs` - Equipment removal workflows
+- Performance benchmarks: `src/performance_tests.rs`
 
-**Current Status:** 214/214 tests passing, zero compilation warnings
+**Current Status:** 263/263 tests passing (203 unit + 60 integration)
 
 **When Adding Features:**
 1. Add unit tests for new functions
 2. Add integration tests for cross-system interactions
-3. Ensure backward compatibility with save files
-4. Update natural language parser if adding new commands
-5. Add command handlers in `input/command_handlers.rs`
+3. Add standalone integration tests in `tests/` for complex workflows
+4. Ensure backward compatibility with save files
+5. Update natural language parser if adding new commands
+6. Add command handlers in `input/command_handlers.rs`
 
 ## Command System Architecture
 

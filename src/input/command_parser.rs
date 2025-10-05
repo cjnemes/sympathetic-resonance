@@ -127,6 +127,18 @@ pub enum ParsedCommand {
     /// Give item to someone
     GiveItem { item: String, target: String },
 
+    /// Attack an enemy to start combat
+    Attack { target: String, spell: Option<String> },
+
+    /// Defend during combat
+    Defend { defense_type: Option<String> },
+
+    /// Flee from combat
+    Flee,
+
+    /// Examine enemy during combat
+    ExamineEnemy,
+
     /// Unknown command with suggestions
     Unknown {
         original: String,
