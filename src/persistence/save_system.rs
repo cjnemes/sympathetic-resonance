@@ -344,6 +344,12 @@ impl SaveManager {
         // In practice, you'd want to check actual available space
         Ok(1024 * 1024 * 100) // Return 100MB as placeholder
     }
+
+    /// Set save directory for testing purposes only
+    #[cfg(test)]
+    pub fn set_save_directory_for_test(&mut self, path: PathBuf) {
+        self.save_directory = path;
+    }
 }
 
 #[cfg(test)]

@@ -8,20 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial project structure and documentation
-- Core game design document with magic system specifications
-- Balance framework with concrete numerical values
-- User experience design standards and accessibility guidelines
-- Risk assessment and mitigation plan
-- MVP definition with 16-week development timeline
-- Sample content for all major game systems
-- Rust project foundation with dependencies
+- Periodic auto-save system (Issue #36)
+  - Automatic saves every 5 minutes (configurable: 1, 5, 10, 15 minutes, or disabled)
+  - Event-based triggers: quest completion, level up, major faction changes, combat end
+  - Automatic cleanup keeping last 3 autosaves (configurable: 1-10)
+  - Silent operation with optional debug notifications
+  - Configuration API for enabling/disabling and customizing intervals
+  - Status command to view autosave settings and next save time
+  - 19 comprehensive tests covering all scenarios
 
 ### Technical
-- Cargo.toml with all required dependencies
-- Module structure for core systems
-- Database schema design
-- Command parsing architecture planning
+- Added autosave timer and configuration to GameEngine
+- Implemented cleanup logic to manage autosave file count
+- Added test helper for isolated save directory testing
+- All 282 tests passing (222 unit + 60 integration)
 
 ## [0.1.0] - Planned
 

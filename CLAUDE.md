@@ -163,7 +163,14 @@ Database path: `content/database.db`
   - `tests/unequip_integration.rs` - Equipment removal workflows
 - Performance benchmarks: `src/performance_tests.rs`
 
-**Current Status:** 263/263 tests passing (203 unit + 60 integration)
+**Current Status:** 282/282 tests passing (222 unit + 60 integration)
+
+**Auto-Save System:**
+- Periodic autosaves every 5 minutes (configurable)
+- Event-based triggers (quest completion, level up, faction changes, combat end)
+- Automatic cleanup (keeps last 3 autosaves by default, configurable)
+- Can be enabled/disabled per user preference
+- 19 comprehensive tests covering all autosave scenarios
 
 **When Adding Features:**
 1. Add unit tests for new functions
