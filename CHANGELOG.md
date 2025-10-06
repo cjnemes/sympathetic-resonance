@@ -9,8 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Complete persistence layer with all game systems (Issue #33)
-- Custom serialization helpers for HashMap with enum/tuple keys
-- Full save/load support for Combat, Faction, Knowledge, Dialogue, and Magic systems
+  - Custom serialization helpers for HashMap with enum/tuple keys
+  - Full save/load support for Combat, Faction, Knowledge, Dialogue, and Magic systems
+- Periodic auto-save system (Issue #36)
+  - Automatic saves every 5 minutes (configurable: 1, 5, 10, 15 minutes, or disabled)
+  - Event-based triggers: quest completion, level up, major faction changes, combat end
+  - Automatic cleanup keeping last 3 autosaves (configurable: 1-10)
+  - Silent operation with optional debug notifications
+  - Configuration API for enabling/disabling and customizing intervals
+  - Status command to view autosave settings and next save time
+  - 19 comprehensive tests covering all scenarios
 
 ### Changed
 - Enhanced save files to include all game systems (previously only Player, WorldState, QuestSystem)
@@ -20,7 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Technical
 - Created `src/systems/serde_helpers.rs` for JSON-compatible serialization
 - Added support for `HashMap<FactionId>`, `HashMap<LearningMethod>`, `HashMap<Direction>`, `HashMap<(FactionId, FactionId)>`, `HashMap<i32>`
-- All 266 tests passing (206 unit + 60 integration)
+- Added autosave timer and configuration to GameEngine
+- Implemented cleanup logic to manage autosave file count
+- Added test helper for isolated save directory testing
+- All 282 tests passing (222 unit + 60 integration)
 
 ## [0.1.0] - Planned
 

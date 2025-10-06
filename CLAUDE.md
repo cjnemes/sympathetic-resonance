@@ -173,13 +173,12 @@ Database path: `content/database.db`
   - Edge cases and error conditions
   - Content unlocks and NPC reactions
 
-**Auto-Save System Test Coverage:**
-- 19 comprehensive tests for auto-save functionality covering:
-  - Periodic autosave triggers and timing
-  - Event-based autosave (quest completion, level up, significant progress)
-  - Autosave cleanup and rotation (maintains max_autosaves limit)
-  - Configuration and status reporting
-  - Error handling and recovery
+**Auto-Save System:**
+- Periodic autosaves every 5 minutes (configurable: 1, 5, 10, 15 minutes, or disabled)
+- Event-based triggers (quest completion, level up, faction changes, combat end)
+- Automatic cleanup (keeps last 3 autosaves by default, configurable: 1-10)
+- Can be enabled/disabled per user preference
+- 19 comprehensive tests covering all autosave scenarios
 
 **When Adding Features:**
 1. Add unit tests for new functions
