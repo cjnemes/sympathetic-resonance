@@ -180,6 +180,18 @@ Database path: `content/database.db`
 - Can be enabled/disabled per user preference
 - 19 comprehensive tests covering all autosave scenarios
 
+**Command History (Rustyline):**
+- Up/down arrow keys to recall previous commands
+- Ctrl+R for reverse search through command history
+- Persistent history across game sessions (max 1000 commands)
+- Left/right arrows for command editing
+- Ctrl+C to cancel input (without exiting)
+- Ctrl+D to exit gracefully
+- History saved to platform-specific location:
+  - macOS: `~/Library/Application Support/SympatheticResonance/command_history.txt`
+  - Linux: `~/.local/share/sympathetic-resonance/command_history.txt`
+  - Windows: `%LOCALAPPDATA%\SympatheticResonance\command_history.txt`
+
 **When Adding Features:**
 1. Add unit tests for new functions
 2. Add integration tests for cross-system interactions

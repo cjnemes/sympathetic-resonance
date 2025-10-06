@@ -19,11 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Configuration API for enabling/disabling and customizing intervals
   - Status command to view autosave settings and next save time
   - 19 comprehensive tests covering all scenarios
+- Command history with rustyline (Issue #35)
+  - Up/down arrow navigation through previous commands
+  - Ctrl+R reverse search through command history
+  - Persistent history across sessions (max 1000 commands)
+  - Left/right arrows for in-line command editing
+  - Ctrl+C to cancel input, Ctrl+D to exit
+  - Platform-specific history file storage
 
 ### Changed
 - Enhanced save files to include all game systems (previously only Player, WorldState, QuestSystem)
 - Updated GameStateData structure to serialize/deserialize all 8 game systems
 - Applied custom serialization to 20+ HashMap fields across codebase
+- Replaced basic stdin input with rustyline for improved CLI experience
 
 ### Technical
 - Created `src/systems/serde_helpers.rs` for JSON-compatible serialization
@@ -31,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added autosave timer and configuration to GameEngine
 - Implemented cleanup logic to manage autosave file count
 - Added test helper for isolated save directory testing
+- Integrated rustyline 14.0 for readline functionality
 - All 282 tests passing (222 unit + 60 integration)
 
 ## [0.1.0] - Planned
@@ -52,32 +61,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [ ] Integration testing framework
 
 ### Added (Milestone 3 - Content & Polish)
-- [ ] All MVP locations and NPCs
-- [ ] Faction questlines with choice consequences
-- [ ] Main mystery storyline
+- [ ] Complete narrative content
+- [ ] Quest system with branching paths
+- [ ] Advanced natural language processing
 - [ ] Tutorial system
-- [ ] Help system with contextual guidance
+- [ ] Enhanced UI/UX
 - [ ] Performance optimization
-
-### Added (Milestone 4 - Beta & Release)
-- [ ] Beta testing program
-- [ ] Final bug fixes and polish
-- [ ] Complete user documentation
-- [ ] Release build and distribution
-
-## Future Versions
-
-### [1.1.0] - Extended World (Planned)
-- Additional locations and faction content
-- Advanced magic applications
-- Enhanced NPC interactions
-
-### [1.2.0] - Social Systems (Planned)
-- Guild and organization mechanics
-- Advanced reputation modeling
-- Community features
-
-### [2.0.0] - Major Expansion (Planned)
-- New regions with unique magical phenomena
-- Advanced character customization
-- Mod support and content creation tools
