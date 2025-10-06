@@ -1433,4 +1433,537 @@ mod tests {
         let new_rep = faction_system.get_reputation(FactionId::MagistersCouncil);
         assert!(new_rep < initial_rep, "Reputation should decrease after abandoning quest");
     }
+
+    // ========== QUEST CHOICE SYSTEM TESTS ==========
+
+    /// Helper function to create a quest with choices for testing
+    fn create_quest_with_choices() -> QuestDefinition {
+        let mut quest = create_test_quest();
+        quest.id = "choice_test_quest".to_string();
+
+        // Add a simple choice
+        quest.choices = vec![
+            QuestChoice {
+                id: "test_choice".to_string(),
+                prompt: "How will you proceed?".to_string(),
+                description: "Choose your approach".to_string(),
+                prerequisite_objective: Some("obj1".to_string()),
+                required: false,
+                options: vec![
+                    ChoiceOption {
+                        id: "option_easy".to_string(),
+                        text: "Take the easy path".to_string(),
+                        description: "A simple approach".to_string(),
+                        requirements: None,
+                        outcome: QuestOutcome {
+                            outcome_type: OutcomeType::Success,
+                            narrative_result: "You succeeded easily".to_string(),
+                            experience_modifier: 1.0,
+                            faction_changes: HashMap::new(),
+                            theory_insights: HashMap::new(),
+                            content_unlocks: vec![],
+                            npc_reactions: HashMap::new(),
+                            item_changes: vec![],
+                        },
+                    },
+                    ChoiceOption {
+                        id: "option_hard".to_string(),
+                        text: "Take the challenging path".to_string(),
+                        description: "A more difficult approach".to_string(),
+                        requirements: Some(ChoiceRequirements {
+                            theory_requirements: vec![("harmonic_fundamentals".to_string(), 0.7)],
+                            faction_requirements: vec![],
+                            item_requirements: vec![],
+                        }),
+                        outcome: QuestOutcome {
+                            outcome_type: OutcomeType::Success,
+                            narrative_result: "You succeeded with skill".to_string(),
+                            experience_modifier: 1.5,
+                            faction_changes: vec![(FactionId::MagistersCouncil, 5)]
+                                .into_iter().collect(),
+                            theory_insights: vec![("harmonic_fundamentals".to_string(), 0.1)]
+                                .into_iter().collect(),
+                            content_unlocks: vec!["advanced_technique".to_string()],
+                            npc_reactions: vec![("mentor".to_string(), "Well done!".to_string())]
+                                .into_iter().collect(),
+                            item_changes: vec![],
+                        },
+                    },
+                ],
+            },
+        ];
+        quest
+    }
+
+    // === CHOICE SELECTION TESTS ===
+
+    #[test]
+    fn test_make_quest_choice_success() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+
+        // Complete prerequisite objective
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        // Make choice
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_easy",
+            &mut player,
+            &mut faction_system
+        );
+
+        assert!(result.is_ok());
+        assert!(result.unwrap().contains("You succeeded easily"));
+    }
+
+    #[test]
+    fn test_make_choice_quest_not_active() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        // Don't start the quest
+
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_easy",
+            &mut player,
+            &mut faction_system
+        );
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not active"));
+    }
+
+    #[test]
+    fn test_make_choice_invalid_choice_id() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "nonexistent_choice",
+            "option_easy",
+            &mut player,
+            &mut faction_system
+        );
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Choice") && err_msg.contains("not found"));
+    }
+
+    #[test]
+    fn test_make_choice_invalid_option_id() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "nonexistent_option",
+            &mut player,
+            &mut faction_system
+        );
+
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Option") && err_msg.contains("not found"));
+    }
+
+    #[test]
+    fn test_make_choice_prerequisite_not_met() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        // Don't complete the prerequisite objective
+
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_easy",
+            &mut player,
+            &mut faction_system
+        );
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("must complete"));
+    }
+
+    // === REQUIREMENT VALIDATION TESTS ===
+
+    #[test]
+    fn test_choice_theory_requirement_met() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        player.knowledge.theories.insert("harmonic_fundamentals".to_string(), 0.8); // Meets 0.7 requirement
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_hard",
+            &mut player,
+            &mut faction_system
+        );
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_choice_theory_requirement_not_met() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        player.knowledge.theories.insert("harmonic_fundamentals".to_string(), 0.5); // Below 0.7 requirement
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_hard",
+            &mut player,
+            &mut faction_system
+        );
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("understanding"));
+    }
+
+    #[test]
+    fn test_choice_faction_requirement() {
+        let mut quest_system = QuestSystem::new();
+        let mut quest = create_quest_with_choices();
+
+        // Add faction requirement to option
+        quest.choices[0].options.push(ChoiceOption {
+            id: "option_faction".to_string(),
+            text: "Use faction influence".to_string(),
+            description: "Leverage your connections".to_string(),
+            requirements: Some(ChoiceRequirements {
+                theory_requirements: vec![],
+                faction_requirements: vec![(FactionId::MagistersCouncil, 25)],
+                item_requirements: vec![],
+            }),
+            outcome: QuestOutcome {
+                outcome_type: OutcomeType::Success,
+                narrative_result: "Your influence worked".to_string(),
+                experience_modifier: 1.2,
+                faction_changes: HashMap::new(),
+                theory_insights: HashMap::new(),
+                content_unlocks: vec![],
+                npc_reactions: HashMap::new(),
+                item_changes: vec![],
+            },
+        });
+
+        let mut player = create_test_player();
+        player.faction_standings.insert(FactionId::MagistersCouncil, 30); // Meets 25 requirement
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_faction",
+            &mut player,
+            &mut faction_system
+        );
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_choice_item_requirement() {
+        let mut quest_system = QuestSystem::new();
+        let mut quest = create_quest_with_choices();
+
+        // Add item requirement to option
+        quest.choices[0].options.push(ChoiceOption {
+            id: "option_item".to_string(),
+            text: "Use special item".to_string(),
+            description: "Use your magic key".to_string(),
+            requirements: Some(ChoiceRequirements {
+                theory_requirements: vec![],
+                faction_requirements: vec![],
+                item_requirements: vec!["magic_key".to_string()],
+            }),
+            outcome: QuestOutcome {
+                outcome_type: OutcomeType::Success,
+                narrative_result: "The key worked perfectly".to_string(),
+                experience_modifier: 1.3,
+                faction_changes: HashMap::new(),
+                theory_insights: HashMap::new(),
+                content_unlocks: vec![],
+                npc_reactions: HashMap::new(),
+                item_changes: vec![],
+            },
+        });
+
+        let mut player = create_test_player();
+        player.inventory.items.push(crate::core::player::Item {
+            name: "magic_key".to_string(),
+            description: "A magical key".to_string(),
+            item_type: crate::core::player::ItemType::Mundane,
+        });
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_item",
+            &mut player,
+            &mut faction_system
+        );
+
+        assert!(result.is_ok());
+    }
+
+    // === OUTCOME APPLICATION TESTS ===
+
+    #[test]
+    fn test_choice_applies_faction_changes() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        let initial_rep = faction_system.get_reputation(FactionId::MagistersCouncil);
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_hard",
+            &mut player,
+            &mut faction_system
+        ).unwrap();
+
+        let new_rep = faction_system.get_reputation(FactionId::MagistersCouncil);
+        assert_eq!(new_rep, initial_rep + 5, "Faction reputation should increase by 5");
+    }
+
+    #[test]
+    fn test_choice_applies_theory_insights() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        let initial_theory = player.knowledge.theories.get("harmonic_fundamentals").copied().unwrap_or(0.0);
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_hard",
+            &mut player,
+            &mut faction_system
+        ).unwrap();
+
+        let new_theory = player.knowledge.theories.get("harmonic_fundamentals").copied().unwrap_or(0.0);
+        assert!((new_theory - (initial_theory + 0.1)).abs() < 0.01, "Theory should increase by 0.1");
+    }
+
+    #[test]
+    fn test_choice_applies_experience() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        let initial_xp = player.attributes.experience.mental_acuity_xp;
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_hard",
+            &mut player,
+            &mut faction_system
+        ).unwrap();
+
+        // option_hard has 1.5 multiplier, base is 50, so should get 75 XP
+        assert_eq!(player.attributes.experience.mental_acuity_xp, initial_xp + 75);
+    }
+
+    #[test]
+    fn test_choice_records_in_progress() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_easy",
+            &mut player,
+            &mut faction_system
+        ).unwrap();
+
+        let progress = quest_system.player_progress.get("choice_test_quest").unwrap();
+        assert_eq!(progress.player_choices.get("test_choice"), Some(&"option_easy".to_string()));
+    }
+
+    #[test]
+    fn test_choice_outcome_types() {
+        // Test that different outcome types are properly distinguished
+        let mut quest = create_quest_with_choices();
+
+        // Add options for each outcome type
+        quest.choices[0].options = vec![
+            ChoiceOption {
+                id: "success".to_string(),
+                text: "Success".to_string(),
+                description: "Successful outcome".to_string(),
+                requirements: None,
+                outcome: QuestOutcome {
+                    outcome_type: OutcomeType::Success,
+                    narrative_result: "Success!".to_string(),
+                    experience_modifier: 1.0,
+                    faction_changes: HashMap::new(),
+                    theory_insights: HashMap::new(),
+                    content_unlocks: vec![],
+                    npc_reactions: HashMap::new(),
+                    item_changes: vec![],
+                },
+            },
+            ChoiceOption {
+                id: "partial".to_string(),
+                text: "Partial".to_string(),
+                description: "Partial success".to_string(),
+                requirements: None,
+                outcome: QuestOutcome {
+                    outcome_type: OutcomeType::PartialSuccess,
+                    narrative_result: "Partial!".to_string(),
+                    experience_modifier: 0.8,
+                    faction_changes: HashMap::new(),
+                    theory_insights: HashMap::new(),
+                    content_unlocks: vec![],
+                    npc_reactions: HashMap::new(),
+                    item_changes: vec![],
+                },
+            },
+        ];
+
+        let mut quest_system = QuestSystem::new();
+        let mut player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "success",
+            &mut player,
+            &mut faction_system
+        ).unwrap();
+
+        assert!(result.contains("Success"));
+        assert!(result.contains("Outcome: Success"));
+    }
+
+    #[test]
+    fn test_choice_content_unlocks() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_hard",
+            &mut player,
+            &mut faction_system
+        ).unwrap();
+
+        assert!(result.contains("Unlocked:"));
+        assert!(result.contains("advanced_technique"));
+    }
+
+    #[test]
+    fn test_choice_npc_reactions() {
+        let mut quest_system = QuestSystem::new();
+        let quest = create_quest_with_choices();
+        let mut player = create_test_player();
+        let mut faction_system = FactionSystem::new();
+
+        quest_system.add_quest_definition(quest);
+        quest_system.start_quest("choice_test_quest", &player, &faction_system).unwrap();
+        quest_system.update_objective_progress("choice_test_quest", "obj1", 1.0, true).unwrap();
+
+        let result = quest_system.make_quest_choice(
+            "choice_test_quest",
+            "test_choice",
+            "option_hard",
+            &mut player,
+            &mut faction_system
+        ).unwrap();
+
+        assert!(result.contains("=== Reactions ==="));
+        assert!(result.contains("mentor"));
+        assert!(result.contains("Well done!"));
+    }
 }

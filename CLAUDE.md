@@ -163,7 +163,23 @@ Database path: `content/database.db`
   - `tests/unequip_integration.rs` - Equipment removal workflows
 - Performance benchmarks: `src/performance_tests.rs`
 
-**Current Status:** 266/266 tests passing (206 unit + 60 integration)
+**Current Status:** 282/282 tests passing (222 unit + 60 integration)
+
+**Quest Choice Test Coverage:**
+- 16 comprehensive tests for quest choice system covering:
+  - Choice selection validation (valid/invalid IDs, prerequisites)
+  - Requirement validation (theory, faction, item requirements)
+  - Outcome application (faction changes, theory insights, experience)
+  - Edge cases and error conditions
+  - Content unlocks and NPC reactions
+
+**Auto-Save System Test Coverage:**
+- 19 comprehensive tests for auto-save functionality covering:
+  - Periodic autosave triggers and timing
+  - Event-based autosave (quest completion, level up, significant progress)
+  - Autosave cleanup and rotation (maintains max_autosaves limit)
+  - Configuration and status reporting
+  - Error handling and recovery
 
 **When Adding Features:**
 1. Add unit tests for new functions
