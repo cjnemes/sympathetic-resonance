@@ -4,6 +4,7 @@
 
 use crate::core::{Player, WorldState};
 use crate::systems::quests::QuestSystem;
+use crate::systems::{CombatSystem, FactionSystem, KnowledgeSystem, DialogueSystem, MagicSystem};
 use crate::GameResult;
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
@@ -21,6 +22,16 @@ pub struct GameStateData {
     pub world: WorldState,
     /// Quest system state and progress
     pub quest_system: QuestSystem,
+    /// Combat system state (active encounters)
+    pub combat_system: CombatSystem,
+    /// Faction reputation and standings
+    pub faction_system: FactionSystem,
+    /// Knowledge and theory progression
+    pub knowledge_system: KnowledgeSystem,
+    /// Dialogue and NPC states
+    pub dialogue_system: DialogueSystem,
+    /// Magic system (stateless, recreated on load)
+    pub magic_system: MagicSystem,
     /// Save metadata
     pub metadata: SaveMetadata,
 }
@@ -46,6 +57,11 @@ pub fn serialize_game_state(
     player: &Player,
     world: &WorldState,
     quest_system: &QuestSystem,
+    combat_system: &CombatSystem,
+    faction_system: &FactionSystem,
+    knowledge_system: &KnowledgeSystem,
+    dialogue_system: &DialogueSystem,
+    _magic_system: &MagicSystem,
     save_name: Option<String>,
 ) -> GameResult<String> {
     let location_name = world.current_location()
@@ -62,6 +78,11 @@ pub fn serialize_game_state(
         player: player.clone(),
         world: world.clone(),
         quest_system: quest_system.clone(),
+        combat_system: combat_system.clone(),
+        faction_system: faction_system.clone(),
+        knowledge_system: knowledge_system.clone(),
+        dialogue_system: dialogue_system.clone(),
+        magic_system: MagicSystem::new(), // Stateless - always create fresh instance
         metadata: SaveMetadata {
             save_name,
             playtime_minutes: player.playtime_minutes,
@@ -75,7 +96,7 @@ pub fn serialize_game_state(
 }
 
 /// Deserialize game state from JSON
-pub fn deserialize_game_state(data: &str) -> GameResult<(Player, WorldState, QuestSystem)> {
+pub fn deserialize_game_state(data: &str) -> GameResult<(Player, WorldState, QuestSystem, CombatSystem, FactionSystem, KnowledgeSystem, DialogueSystem, MagicSystem)> {
     let game_state: GameStateData = serde_json::from_str(data)
         .map_err(|e| crate::GameError::SaveLoadError(format!("Deserialization failed: {}", e)))?;
 
@@ -90,7 +111,16 @@ pub fn deserialize_game_state(data: &str) -> GameResult<(Player, WorldState, Que
     // Perform any necessary migrations
     let migrated_state = migrate_save_data(game_state)?;
 
-    Ok((migrated_state.player, migrated_state.world, migrated_state.quest_system))
+    Ok((
+        migrated_state.player,
+        migrated_state.world,
+        migrated_state.quest_system,
+        migrated_state.combat_system,
+        migrated_state.faction_system,
+        migrated_state.knowledge_system,
+        migrated_state.dialogue_system,
+        migrated_state.magic_system,
+    ))
 }
 
 /// Migrate save data between versions
@@ -226,9 +256,19 @@ mod tests {
         let player = Player::new("Test Player".to_string());
         let world = WorldState::new();
         let quest_system = QuestSystem::new();
+        let combat_system = CombatSystem::new();
+        let faction_system = FactionSystem::new();
+        let knowledge_system = KnowledgeSystem::new();
+        let dialogue_system = DialogueSystem::new();
+        let magic_system = MagicSystem::new();
 
-        let serialized = serialize_game_state(&player, &world, &quest_system, Some("Test Save".to_string())).unwrap();
-        let (loaded_player, _loaded_world, _loaded_quest_system) = deserialize_game_state(&serialized).unwrap();
+        let serialized = serialize_game_state(
+            &player, &world, &quest_system,
+            &combat_system, &faction_system, &knowledge_system,
+            &dialogue_system, &magic_system,
+            Some("Test Save".to_string())
+        ).unwrap();
+        let (loaded_player, _loaded_world, _loaded_quest_system, _, _, _, _, _) = deserialize_game_state(&serialized).unwrap();
 
         assert_eq!(loaded_player.name, "Test Player");
     }
@@ -238,8 +278,18 @@ mod tests {
         let player = Player::new("Test Player".to_string());
         let world = WorldState::new();
         let quest_system = QuestSystem::new();
+        let combat_system = CombatSystem::new();
+        let faction_system = FactionSystem::new();
+        let knowledge_system = KnowledgeSystem::new();
+        let dialogue_system = DialogueSystem::new();
+        let magic_system = MagicSystem::new();
 
-        let serialized = serialize_game_state(&player, &world, &quest_system, None).unwrap();
+        let serialized = serialize_game_state(
+            &player, &world, &quest_system,
+            &combat_system, &faction_system, &knowledge_system,
+            &dialogue_system, &magic_system,
+            None
+        ).unwrap();
         let game_state_data = serde_json::from_str::<GameStateData>(&serialized).unwrap();
 
         assert!(validate_game_state(&game_state_data).is_ok());
@@ -252,7 +302,18 @@ mod tests {
 
         let world = WorldState::new();
         let quest_system = QuestSystem::new();
-        let serialized = serialize_game_state(&player, &world, &quest_system, None).unwrap();
+        let combat_system = CombatSystem::new();
+        let faction_system = FactionSystem::new();
+        let knowledge_system = KnowledgeSystem::new();
+        let dialogue_system = DialogueSystem::new();
+        let magic_system = MagicSystem::new();
+
+        let serialized = serialize_game_state(
+            &player, &world, &quest_system,
+            &combat_system, &faction_system, &knowledge_system,
+            &dialogue_system, &magic_system,
+            None
+        ).unwrap();
         let game_state_data = serde_json::from_str::<GameStateData>(&serialized).unwrap();
 
         assert!(validate_game_state(&game_state_data).is_err());
@@ -263,8 +324,18 @@ mod tests {
         let player = Player::new("Hero".to_string());
         let world = WorldState::new();
         let quest_system = QuestSystem::new();
+        let combat_system = CombatSystem::new();
+        let faction_system = FactionSystem::new();
+        let knowledge_system = KnowledgeSystem::new();
+        let dialogue_system = DialogueSystem::new();
+        let magic_system = MagicSystem::new();
 
-        let serialized = serialize_game_state(&player, &world, &quest_system, Some("Epic Adventure".to_string())).unwrap();
+        let serialized = serialize_game_state(
+            &player, &world, &quest_system,
+            &combat_system, &faction_system, &knowledge_system,
+            &dialogue_system, &magic_system,
+            Some("Epic Adventure".to_string())
+        ).unwrap();
         let game_state_data = serde_json::from_str::<GameStateData>(&serialized).unwrap();
         let summary = create_save_summary(&game_state_data);
 

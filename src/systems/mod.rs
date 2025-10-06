@@ -15,6 +15,7 @@ pub mod dialogue;
 pub mod quests;
 pub mod quest_examples;
 pub mod items;
+pub mod serde_helpers;
 
 
 pub use magic::MagicSystem;

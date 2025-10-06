@@ -17,6 +17,7 @@ pub use crystal_management::{CrystalManager, CrystalEfficiency};
 use crate::core::Player;
 use crate::core::world_state::WorldState;
 use crate::GameResult;
+use serde::{Serialize, Deserialize};
 
 /// Complete magic system coordinating all magical mechanics
 pub struct MagicSystem {
@@ -28,6 +29,51 @@ pub struct MagicSystem {
     /// Crystal management system
     #[allow(dead_code)]
     crystal_manager: CrystalManager,
+}
+
+// Custom serialization - MagicSystem has no state, just recreate on deserialize
+impl Serialize for MagicSystem {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        // Serialize an empty struct since there's no state to preserve
+        serializer.serialize_unit_struct("MagicSystem")
+    }
+}
+
+impl<'de> Deserialize<'de> for MagicSystem {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        // Just create a new instance - all calculators are stateless
+        deserializer.deserialize_unit_struct("MagicSystem", MagicSystemVisitor)?;
+        Ok(MagicSystem::new())
+    }
+}
+
+struct MagicSystemVisitor;
+
+impl<'de> serde::de::Visitor<'de> for MagicSystemVisitor {
+    type Value = ();
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("unit struct MagicSystem")
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for MagicSystem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MagicSystem").finish()
+    }
 }
 
 impl MagicSystem {

@@ -136,7 +136,7 @@ impl Enemy {
 }
 
 /// Defense action types
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DefenseType {
     Shield,      // Reduces damage 50%, costs energy
     Evade,       // 70% chance to avoid, costs fatigue
@@ -173,6 +173,7 @@ pub enum CombatOutcome {
 }
 
 /// Active combat encounter
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CombatEncounter {
     pub enemy: Enemy,
     pub turn_count: i32,
@@ -193,6 +194,7 @@ impl CombatEncounter {
 }
 
 /// Combat system managing combat encounters
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CombatSystem {
     active_encounter: Option<CombatEncounter>,
 }

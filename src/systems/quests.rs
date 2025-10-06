@@ -45,6 +45,10 @@ pub struct QuestDefinition {
     pub rewards: QuestRewards,
 
     /// Faction implications and standing changes
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_map"
+    )]
     pub faction_effects: HashMap<FactionId, i32>,
     /// Educational focus and learning outcomes
     pub educational_focus: EducationalObjectives,
@@ -167,6 +171,10 @@ pub struct ObjectiveReward {
     /// Theory understanding bonuses
     pub theory_insights: HashMap<String, f32>,
     /// Faction standing changes
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_map"
+    )]
     pub faction_changes: HashMap<FactionId, i32>,
     /// Items received
     pub items: Vec<String>,
@@ -182,6 +190,10 @@ pub struct QuestRewards {
     /// Theory mastery bonuses
     pub theory_bonuses: HashMap<String, f32>,
     /// Faction standing changes
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_map"
+    )]
     pub faction_changes: HashMap<FactionId, i32>,
     /// Items and equipment
     pub items: Vec<String>,
@@ -224,6 +236,10 @@ pub struct QuestBranch {
     /// Objectives specific to this branch
     pub branch_objectives: Vec<QuestObjective>,
     /// Faction implications of choosing this path
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_map"
+    )]
     pub faction_implications: HashMap<FactionId, i32>,
     /// Educational focus of this branch
     pub educational_focus: EducationalObjectives,
@@ -273,6 +289,10 @@ pub struct QuestOutcome {
     /// Experience modifier (multiplier: 1.0 = normal, 1.5 = 50% bonus)
     pub experience_modifier: f32,
     /// Faction standing changes from this choice
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_map"
+    )]
     pub faction_changes: HashMap<FactionId, i32>,
     /// Theory insights gained/lost
     pub theory_insights: HashMap<String, f32>,
@@ -379,6 +399,10 @@ pub struct QuestGlobalState {
     /// Global events affecting all quests
     pub global_events: HashMap<String, String>,
     /// Faction relationship changes from quest outcomes
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_pair_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_pair_map"
+    )]
     pub faction_relationship_modifiers: HashMap<(FactionId, FactionId), f32>,
 }
 

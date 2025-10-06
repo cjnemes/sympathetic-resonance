@@ -5,6 +5,7 @@
 
 use crate::core::{Player, WorldState};
 use crate::systems::quests::QuestSystem;
+use crate::systems::{CombatSystem, FactionSystem, KnowledgeSystem, DialogueSystem, MagicSystem};
 use crate::persistence::serialization::{
     SaveFileInfo, serialize_game_state, deserialize_game_state,
     validate_game_state, compress_save_data, decompress_save_data
@@ -93,6 +94,11 @@ impl SaveManager {
         player: &Player,
         world: &WorldState,
         quest_system: &QuestSystem,
+        combat_system: &CombatSystem,
+        faction_system: &FactionSystem,
+        knowledge_system: &KnowledgeSystem,
+        dialogue_system: &DialogueSystem,
+        magic_system: &MagicSystem,
         slot_name: Option<String>,
         save_name: Option<String>,
     ) -> GameResult<String> {
@@ -105,7 +111,12 @@ impl SaveManager {
         }
 
         // Serialize game state
-        let serialized_data = serialize_game_state(player, world, quest_system, save_name)?;
+        let serialized_data = serialize_game_state(
+            player, world, quest_system,
+            combat_system, faction_system, knowledge_system,
+            dialogue_system, magic_system,
+            save_name
+        )?;
 
         // Compress data
         let compressed_data = compress_save_data(&serialized_data)?;
@@ -118,7 +129,7 @@ impl SaveManager {
     }
 
     /// Load game state from specified slot
-    pub fn load_game(&self, slot_name: &str) -> GameResult<(Player, WorldState, QuestSystem)> {
+    pub fn load_game(&self, slot_name: &str) -> GameResult<(Player, WorldState, QuestSystem, CombatSystem, FactionSystem, KnowledgeSystem, DialogueSystem, MagicSystem)> {
         let file_path = self.get_save_file_path(slot_name);
 
         if !file_path.exists() {
@@ -135,9 +146,9 @@ impl SaveManager {
         let serialized_data = decompress_save_data(&compressed_data)?;
 
         // Deserialize game state
-        let (player, world, quest_system) = deserialize_game_state(&serialized_data)?;
+        let (player, world, quest_system, combat_system, faction_system, knowledge_system, dialogue_system, magic_system) = deserialize_game_state(&serialized_data)?;
 
-        Ok((player, world, quest_system))
+        Ok((player, world, quest_system, combat_system, faction_system, knowledge_system, dialogue_system, magic_system))
     }
 
     /// Get information about a save slot without loading the full game
@@ -285,15 +296,45 @@ impl SaveManager {
     }
 
     /// Quick save to default slot
-    pub fn quick_save(&self, player: &Player, world: &WorldState, quest_system: &QuestSystem) -> GameResult<String> {
-        self.save_game(player, world, quest_system, Some("quicksave".to_string()), None)
+    pub fn quick_save(
+        &self,
+        player: &Player,
+        world: &WorldState,
+        quest_system: &QuestSystem,
+        combat_system: &CombatSystem,
+        faction_system: &FactionSystem,
+        knowledge_system: &KnowledgeSystem,
+        dialogue_system: &DialogueSystem,
+        magic_system: &MagicSystem,
+    ) -> GameResult<String> {
+        self.save_game(
+            player, world, quest_system,
+            combat_system, faction_system, knowledge_system,
+            dialogue_system, magic_system,
+            Some("quicksave".to_string()), None
+        )
     }
 
     /// Auto-save (typically called periodically)
-    pub fn auto_save(&self, player: &Player, world: &WorldState, quest_system: &QuestSystem) -> GameResult<String> {
+    pub fn auto_save(
+        &self,
+        player: &Player,
+        world: &WorldState,
+        quest_system: &QuestSystem,
+        combat_system: &CombatSystem,
+        faction_system: &FactionSystem,
+        knowledge_system: &KnowledgeSystem,
+        dialogue_system: &DialogueSystem,
+        magic_system: &MagicSystem,
+    ) -> GameResult<String> {
         let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M");
         let slot_name = format!("autosave_{}", timestamp);
-        self.save_game(player, world, quest_system, Some(slot_name), Some("Auto Save".to_string()))
+        self.save_game(
+            player, world, quest_system,
+            combat_system, faction_system, knowledge_system,
+            dialogue_system, magic_system,
+            Some(slot_name), Some("Auto Save".to_string())
+        )
     }
 
     /// Import save file from external location
@@ -359,23 +400,38 @@ mod tests {
         (manager, temp_dir)
     }
 
+    fn create_test_systems() -> (CombatSystem, FactionSystem, KnowledgeSystem, DialogueSystem, MagicSystem) {
+        (
+            CombatSystem::new(),
+            FactionSystem::new(),
+            KnowledgeSystem::new(),
+            DialogueSystem::new(),
+            MagicSystem::new(),
+        )
+    }
+
     #[test]
     fn test_save_and_load() {
         let (manager, _temp_dir) = create_test_save_manager();
         let player = Player::new("Test Player".to_string());
         let world = WorldState::new();
-
         let quest_system = QuestSystem::new();
+        let (combat_system, faction_system, knowledge_system, dialogue_system, magic_system) = create_test_systems();
 
         // Save game
-        let save_result = manager.save_game(&player, &world, &quest_system, Some("test".to_string()), Some("Test Save".to_string()));
+        let save_result = manager.save_game(
+            &player, &world, &quest_system,
+            &combat_system, &faction_system, &knowledge_system,
+            &dialogue_system, &magic_system,
+            Some("test".to_string()), Some("Test Save".to_string())
+        );
         assert!(save_result.is_ok());
 
         // Load game
         let load_result = manager.load_game("test");
         assert!(load_result.is_ok());
 
-        let (loaded_player, _loaded_world, _loaded_quest_system) = load_result.unwrap();
+        let (loaded_player, _, _, _, _, _, _, _) = load_result.unwrap();
         assert_eq!(loaded_player.name, "Test Player");
     }
 
@@ -384,10 +440,15 @@ mod tests {
         let (manager, _temp_dir) = create_test_save_manager();
         let player = Player::new("Info Test".to_string());
         let world = WorldState::new();
-
         let quest_system = QuestSystem::new();
+        let (combat_system, faction_system, knowledge_system, dialogue_system, magic_system) = create_test_systems();
 
-        manager.save_game(&player, &world, &quest_system, Some("info_test".to_string()), Some("Info Test Save".to_string())).unwrap();
+        manager.save_game(
+            &player, &world, &quest_system,
+            &combat_system, &faction_system, &knowledge_system,
+            &dialogue_system, &magic_system,
+            Some("info_test".to_string()), Some("Info Test Save".to_string())
+        ).unwrap();
 
         let info = manager.get_save_info("info_test").unwrap();
         assert!(info.is_some());
@@ -402,12 +463,22 @@ mod tests {
         let (manager, _temp_dir) = create_test_save_manager();
         let player = Player::new("List Test".to_string());
         let world = WorldState::new();
-
         let quest_system = QuestSystem::new();
+        let (combat_system, faction_system, knowledge_system, dialogue_system, magic_system) = create_test_systems();
 
         // Create multiple saves
-        manager.save_game(&player, &world, &quest_system, Some("save1".to_string()), None).unwrap();
-        manager.save_game(&player, &world, &quest_system, Some("save2".to_string()), None).unwrap();
+        manager.save_game(
+            &player, &world, &quest_system,
+            &combat_system, &faction_system, &knowledge_system,
+            &dialogue_system, &magic_system,
+            Some("save1".to_string()), None
+        ).unwrap();
+        manager.save_game(
+            &player, &world, &quest_system,
+            &combat_system, &faction_system, &knowledge_system,
+            &dialogue_system, &magic_system,
+            Some("save2".to_string()), None
+        ).unwrap();
 
         let slots = manager.list_save_slots().unwrap();
         assert_eq!(slots.len(), 2);
@@ -420,10 +491,15 @@ mod tests {
         let (manager, _temp_dir) = create_test_save_manager();
         let player = Player::new("Delete Test".to_string());
         let world = WorldState::new();
-
         let quest_system = QuestSystem::new();
+        let (combat_system, faction_system, knowledge_system, dialogue_system, magic_system) = create_test_systems();
 
-        manager.save_game(&player, &world, &quest_system, Some("delete_test".to_string()), None).unwrap();
+        manager.save_game(
+            &player, &world, &quest_system,
+            &combat_system, &faction_system, &knowledge_system,
+            &dialogue_system, &magic_system,
+            Some("delete_test".to_string()), None
+        ).unwrap();
         assert!(manager.get_save_info("delete_test").unwrap().is_some());
 
         manager.delete_save("delete_test").unwrap();
@@ -435,10 +511,14 @@ mod tests {
         let (manager, _temp_dir) = create_test_save_manager();
         let player = Player::new("Quick Test".to_string());
         let world = WorldState::new();
-
         let quest_system = QuestSystem::new();
+        let (combat_system, faction_system, knowledge_system, dialogue_system, magic_system) = create_test_systems();
 
-        let result = manager.quick_save(&player, &world, &quest_system);
+        let result = manager.quick_save(
+            &player, &world, &quest_system,
+            &combat_system, &faction_system, &knowledge_system,
+            &dialogue_system, &magic_system
+        );
         assert!(result.is_ok());
 
         // Should be able to load quicksave
@@ -452,6 +532,7 @@ mod tests {
         let player = Player::new("Security Test".to_string());
         let world = WorldState::new();
         let quest_system = QuestSystem::new();
+        let (combat_system, faction_system, knowledge_system, dialogue_system, magic_system) = create_test_systems();
 
         // Test various path traversal attempts
         let malicious_names = vec![
@@ -468,7 +549,12 @@ mod tests {
 
         for malicious_name in malicious_names {
             // Should sanitize the name and save safely within the saves directory
-            let result = manager.save_game(&player, &world, &quest_system, Some(malicious_name.to_string()), None);
+            let result = manager.save_game(
+                &player, &world, &quest_system,
+                &combat_system, &faction_system, &knowledge_system,
+                &dialogue_system, &magic_system,
+                Some(malicious_name.to_string()), None
+            );
             assert!(result.is_ok(), "Failed to handle malicious name: {}", malicious_name);
 
             // Verify the file was created within the saves directory, not outside
