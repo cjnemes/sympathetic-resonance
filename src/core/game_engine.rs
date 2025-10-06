@@ -5,8 +5,9 @@ use crate::systems::{MagicSystem, FactionSystem, DialogueSystem, KnowledgeSystem
 use crate::input::{CommandParser, execute_command};
 use crate::persistence::{DatabaseManager, SaveManager};
 use crate::GameResult;
-use std::io::{self, Write};
 use std::time::{Instant, Duration};
+use rustyline::error::ReadlineError;
+use rustyline::DefaultEditor;
 
 /// Main game engine that coordinates all systems
 pub struct GameEngine {
@@ -44,6 +45,10 @@ pub struct GameEngine {
     autosave_enabled: bool,
     /// Maximum number of autosave files to keep
     max_autosaves: usize,
+    /// Readline editor for command history
+    rl: DefaultEditor,
+    /// History file path
+    history_path: std::path::PathBuf,
 }
 
 impl GameEngine {
@@ -57,6 +62,22 @@ impl GameEngine {
         world.locations = locations;
 
         let save_manager = SaveManager::new()?;
+
+        // Initialize rustyline editor
+        let mut rl = DefaultEditor::new()
+            .map_err(|e| anyhow::anyhow!("Failed to create readline editor: {}", e))?;
+
+        // Configure history file path using platform-specific directory
+        let history_path = if let Some(data_dir) = dirs::data_dir() {
+            let app_dir = data_dir.join("SympatheticResonance");
+            std::fs::create_dir_all(&app_dir)?;
+            app_dir.join("command_history.txt")
+        } else {
+            std::path::PathBuf::from("command_history.txt")
+        };
+
+        // Load existing history if available (silently ignore if file doesn't exist)
+        let _ = rl.load_history(&history_path);
 
         // Initialize knowledge system
         let mut knowledge_system = KnowledgeSystem::new();
@@ -97,6 +118,8 @@ impl GameEngine {
             autosave_interval: Duration::from_secs(300), // 5 minutes default
             autosave_enabled: true,
             max_autosaves: 3,
+            rl,
+            history_path,
         })
     }
 
@@ -106,39 +129,62 @@ impl GameEngine {
         self.show_initial_location()?;
 
         while self.running {
-            // Get player input
-            print!("> ");
-            io::stdout().flush()?;
+            // Get player input using rustyline for command history
+            let readline = self.rl.readline("> ");
 
-            let mut input = String::new();
-            io::stdin().read_line(&mut input)?;
-            let input = input.trim();
+            match readline {
+                Ok(input) => {
+                    let input = input.trim();
 
-            if input.is_empty() {
-                continue;
-            }
+                    if input.is_empty() {
+                        continue;
+                    }
 
-            // Process command
-            match self.process_command(input) {
-                Ok(response) => {
-                    if response == "QUIT_GAME" {
-                        self.running = false;
-                        println!("Goodbye!");
-                    } else {
-                        println!("{}\n", response);
+                    // Add to history
+                    let _ = self.rl.add_history_entry(input);
+
+                    // Process command
+                    match self.process_command(input) {
+                        Ok(response) => {
+                            if response == "QUIT_GAME" {
+                                self.running = false;
+                                println!("Goodbye!");
+                            } else {
+                                println!("{}\n", response);
+                            }
+                        }
+                        Err(e) => {
+                            println!("Error: {}\n", e);
+                        }
+                    }
+
+                    // Check if autosave is needed
+                    if let Err(e) = self.check_autosave() {
+                        if self.debug_mode {
+                            println!("Autosave error: {}", e);
+                        }
                     }
                 }
-                Err(e) => {
-                    println!("Error: {}\n", e);
+                Err(ReadlineError::Interrupted) => {
+                    // Ctrl+C - continue running
+                    println!("(Use 'quit' to exit)");
+                    continue;
+                }
+                Err(ReadlineError::Eof) => {
+                    // Ctrl+D - exit gracefully
+                    self.running = false;
+                    println!("Goodbye!");
+                }
+                Err(err) => {
+                    println!("Error reading input: {}", err);
+                    return Err(anyhow::anyhow!("Readline error: {}", err));
                 }
             }
+        }
 
-            // Check if autosave is needed
-            if let Err(e) = self.check_autosave() {
-                if self.debug_mode {
-                    println!("Autosave error: {}", e);
-                }
-            }
+        // Save command history on exit
+        if let Err(e) = self.rl.save_history(&self.history_path) {
+            eprintln!("Failed to save command history: {}", e);
         }
 
         Ok(())
@@ -374,6 +420,11 @@ impl GameEngine {
             &self.player,
             &self.world,
             &self.quest_system,
+            &self.combat_system,
+            &self.faction_system,
+            &self.knowledge_system,
+            &self.dialogue_system,
+            &self.magic_system,
             Some(slot_name.clone()),
             Some("Auto Save".to_string())
         )?;
