@@ -33,6 +33,10 @@ impl Relationship {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PoliticalSystem {
     /// Relationships between all faction pairs
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_pair_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_pair_map"
+    )]
     relationships: HashMap<(FactionId, FactionId), Relationship>,
     /// Current political events affecting relationships
     events: Vec<PoliticalEvent>,
@@ -50,6 +54,10 @@ pub struct PoliticalEvent {
     /// Factions involved in this event
     pub participants: Vec<FactionId>,
     /// How this event modifies relationships
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_pair_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_pair_map"
+    )]
     pub relationship_effects: HashMap<(FactionId, FactionId), RelationshipEffect>,
     /// When this event started (game time in minutes)
     pub start_time: i32,

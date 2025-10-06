@@ -77,6 +77,10 @@ pub struct FactionInfluence {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FactionSystem {
     /// All faction definitions
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_faction_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_faction_map"
+    )]
     pub factions: HashMap<FactionId, Faction>,
     /// Reputation management
     pub reputation: ReputationSystem,

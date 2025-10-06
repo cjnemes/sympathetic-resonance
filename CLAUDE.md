@@ -165,10 +165,18 @@ Database path: `content/database.db`
 
 **Current Status:** 282/282 tests passing (222 unit + 60 integration)
 
+**Quest Choice Test Coverage:**
+- 16 comprehensive tests for quest choice system covering:
+  - Choice selection validation (valid/invalid IDs, prerequisites)
+  - Requirement validation (theory, faction, item requirements)
+  - Outcome application (faction changes, theory insights, experience)
+  - Edge cases and error conditions
+  - Content unlocks and NPC reactions
+
 **Auto-Save System:**
-- Periodic autosaves every 5 minutes (configurable)
+- Periodic autosaves every 5 minutes (configurable: 1, 5, 10, 15 minutes, or disabled)
 - Event-based triggers (quest completion, level up, faction changes, combat end)
-- Automatic cleanup (keeps last 3 autosaves by default, configurable)
+- Automatic cleanup (keeps last 3 autosaves by default, configurable: 1-10)
 - Can be enabled/disabled per user preference
 - 19 comprehensive tests covering all autosave scenarios
 
@@ -214,12 +222,20 @@ Database path: `content/database.db`
 - `load` or `load <slot_name>` - Load saved game state
 
 **Save includes:**
-- Player state (attributes, inventory, knowledge)
-- World state (location, time, conditions, events)
-- Quest progress and active quests
-- Faction reputation
-- Theory understanding levels
-- Learning history and research progress
+- Player state (attributes, inventory, knowledge, faction standings)
+- World state (locations, time, environment, events)
+- All game systems:
+  - QuestSystem (quest definitions, progress, global state)
+  - CombatSystem (active encounters, combat state)
+  - FactionSystem (reputation, political relationships)
+  - KnowledgeSystem (theory understanding, learning history)
+  - DialogueSystem (NPC state, dispositions)
+  - MagicSystem (stateless, recreated on load)
+
+**Serialization Notes:**
+- Custom serialization helpers in `src/systems/serde_helpers.rs` handle HashMap with enum/tuple keys
+- JSON doesn't support non-string HashMap keys; helpers convert to Vec for serialization
+- Supported types: `HashMap<FactionId>`, `HashMap<LearningMethod>`, `HashMap<Direction>`, `HashMap<(FactionId, FactionId)>`, `HashMap<i32>`
 
 ## Magic System Details
 

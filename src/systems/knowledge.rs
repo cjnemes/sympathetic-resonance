@@ -13,6 +13,7 @@ use crate::persistence::database::{DatabaseManager, TheoryData};
 use crate::GameResult;
 
 /// Complete knowledge progression system
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KnowledgeSystem {
     /// All available theories loaded from database
     theories: HashMap<String, Theory>,
@@ -49,7 +50,11 @@ pub struct Theory {
     pub applications: Vec<String>,
     /// Learning methods available for this theory
     pub available_learning_methods: HashSet<LearningMethod>,
-    /// Experience multipliers for different learning methods
+    /// Experience multipliers for different learning methods (stored as Vec for JSON compatibility)
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_learning_method_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_learning_method_map"
+    )]
     pub method_multipliers: HashMap<LearningMethod, f32>,
 }
 
@@ -105,6 +110,10 @@ pub struct TheoryProgress {
     /// Experience points accumulated in this theory
     pub experience_points: i32,
     /// Methods used to learn this theory and their contributions
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_learning_method_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_learning_method_map"
+    )]
     pub learning_history: HashMap<LearningMethod, i32>,
     /// Time spent learning this theory in minutes
     pub time_invested: i32,
@@ -140,6 +149,7 @@ pub struct LearningActivity {
 }
 
 /// Calculates benefits gained from theory mastery
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenefitCalculator {
     /// Magic success rate improvements by theory
     magic_bonuses: HashMap<String, f32>,
@@ -150,6 +160,7 @@ pub struct BenefitCalculator {
 }
 
 /// Validates theory prerequisites and learning paths
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PrerequisiteValidator {
     /// Dependency graph for efficient prerequisite checking
     dependency_graph: HashMap<String, HashSet<String>>,
@@ -158,6 +169,7 @@ pub struct PrerequisiteValidator {
 }
 
 /// Implements different learning mechanics
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LearningMechanics {
     /// Study mechanics for book learning
     study_mechanics: StudyMechanics,
@@ -172,6 +184,7 @@ pub struct LearningMechanics {
 }
 
 /// Study mechanics implementation
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StudyMechanics {
     /// Base study efficiency (modified by mental acuity)
     base_efficiency: f32,
@@ -182,6 +195,7 @@ pub struct StudyMechanics {
 }
 
 /// Experimentation mechanics implementation
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExperimentMechanics {
     /// Base experimentation efficiency
     base_efficiency: f32,
@@ -189,10 +203,15 @@ pub struct ExperimentMechanics {
     risk_factors: HashMap<String, f32>,
     /// Success rate modifiers based on theory understanding (planned feature)
     #[allow(dead_code)]
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_i32_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_i32_map"
+    )]
     understanding_modifiers: HashMap<i32, f32>,
 }
 
 /// Observation mechanics implementation
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ObservationMechanics {
     /// Base observation efficiency
     base_efficiency: f32,
@@ -203,6 +222,7 @@ pub struct ObservationMechanics {
 }
 
 /// Teaching mechanics implementation
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TeachingMechanics {
     /// Base teaching efficiency
     base_efficiency: f32,
@@ -213,6 +233,7 @@ pub struct TeachingMechanics {
 }
 
 /// Research mechanics implementation
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResearchMechanics {
     /// Base research efficiency
     base_efficiency: f32,
@@ -221,6 +242,10 @@ pub struct ResearchMechanics {
     research_prerequisites: HashMap<String, Vec<String>>,
     /// Discovery probability curves (planned feature)
     #[allow(dead_code)]
+    #[serde(
+        serialize_with = "crate::systems::serde_helpers::serialize_i32_map",
+        deserialize_with = "crate::systems::serde_helpers::deserialize_i32_map"
+    )]
     discovery_rates: HashMap<i32, f32>,
 }
 
